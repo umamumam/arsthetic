@@ -10,35 +10,41 @@
             <ul class="pc-navbar">
                 <li class="pc-item">
                     <a href="/dashboard" class="pc-link">
-                        <span class="pc-micon"><i class="ti ti-home"></i></span>
+                        <span class="pc-micon"><i class="fas fa-home"></i></span>
                         <span class="pc-mtext">Dashboard</span>
                     </a>
                 </li>
 
                 <li class="pc-item pc-caption">
-                    <label>UI Components</label>
+                    <label>Page</label>
                     <i class="ti ti-dashboard"></i>
                 </li>
                 <li class="pc-item">
                     <a href="/photobooths" class="pc-link">
-                        <span class="pc-micon"><i class="ti ti-color-swatch"></i></span>
+                        <span class="pc-micon"><i class="ti ti-camera"></i></span>
                         <span class="pc-mtext">Daftar Photobooth</span>
                     </a>
                 </li>
                 <li class="pc-item">
                     <a href="/markers" class="pc-link">
-                        <span class="pc-micon"><i class="ti ti-typography"></i></span>
+                        <span class="pc-micon"><i class="ti ti-polaroid"></i></span>
                         <span class="pc-mtext">Upload Foto</span>
                     </a>
                 </li>
                 <li class="pc-item">
                     <a href="/markers/upload-mind" class="pc-link">
-                        <span class="pc-micon"><i class="ti ti-plant-2"></i></span>
+                        <span class="pc-micon"><i class="ti ti-stack"></i></span>
                         <span class="pc-mtext">Upload Marker</span>
                     </a>
                 </li>
+                <li class="pc-item">
+                    <a href="{{ env('VITE_DEV_URL') . env('VITE_AR_APP_PATH') }}" class="pc-link" target="_blank">
+                        <span class="pc-micon"><i class="ti ti-color-swatch"></i></span>
+                        <span class="pc-mtext">Convert Foto</span>
+                    </a>
+                </li>
 
-                <li class="pc-item pc-caption">
+                {{-- <li class="pc-item pc-caption">
                     <label>Pages</label>
                     <i class="ti ti-news"></i>
                 </li>
@@ -104,7 +110,7 @@
                         <span class="pc-micon"><i class="ti ti-brand-chrome"></i></span>
                         <span class="pc-mtext">Sample page</span>
                     </a>
-                </li>
+                </li> --}}
             </ul>
         </div>
     </div>

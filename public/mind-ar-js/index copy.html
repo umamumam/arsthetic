@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            /* Reset & Base Styles */
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            }
+
+            body {
+                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                min-height: 100vh;
+                padding: 2rem;
+                color: #333;
+                line-height: 1.6;
+            }
+
+            /* Typography */
+            h1 {
+                font-size: 2.5rem;
+                margin-bottom: 2rem;
+                color: #2c3e50;
+                text-align: center;
+                position: relative;
+                padding-bottom: 0.5rem;
+            }
+
+            h1::after {
+                content: '';
+                position: absolute;
+                bottom: 0;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 100px;
+                height: 4px;
+                background: linear-gradient(90deg, #3498db, #9b59b6);
+                border-radius: 2px;
+            }
+
+            h2 {
+                font-size: 1.8rem;
+                margin: 2rem 0 1rem;
+                color: #3498db;
+                padding-left: 0.5rem;
+                border-left: 4px solid #9b59b6;
+            }
+
+            /* Link Styles */
+            ul {
+                list-style: none;
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                gap: 1rem;
+                margin-bottom: 2rem;
+            }
+
+            li a {
+                display: block;
+                padding: 1rem;
+                background: white;
+                border-radius: 8px;
+                text-decoration: none;
+                color: #2c3e50;
+                font-weight: 500;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                border: 1px solid rgba(0, 0, 0, 0.1);
+            }
+
+            li a:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+                background: linear-gradient(135deg, #3498db 0%, #9b59b6 100%);
+                color: white;
+            }
+
+            /* Responsive */
+            @media (max-width: 768px) {
+                ul {
+                    grid-template-columns: 1fr;
+                }
+
+                h1 {
+                    font-size: 2rem;
+                }
+
+                h2 {
+                    font-size: 1.5rem;
+                }
+            }
+
+            /* Animation */
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(20px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+
+            li {
+                animation: fadeIn 0.5s ease forwards;
+                opacity: 0;
+            }
+
+            li:nth-child(1) { animation-delay: 0.1s; }
+            li:nth-child(2) { animation-delay: 0.2s; }
+            li:nth-child(3) { animation-delay: 0.3s; }
+            li:nth-child(4) { animation-delay: 0.4s; }
+            li:nth-child(5) { animation-delay: 0.5s; }
+            li:nth-child(6) { animation-delay: 0.6s; }
+            li:nth-child(7) { animation-delay: 0.7s; }
+            li:nth-child(8) { animation-delay: 0.8s; }
+        </style>
+    </head>
+    <body>
+        <h1>MindAR Examples</h1>
+        <h2>Image-Tracking</h2>
+        <ul>
+            <li><a href="examples/image-tracking/compile.html">Compile</a></li>
+            <li><a href="examples/image-tracking/debug.html">Debug Mode</a></li>
+            <li><a href="examples/image-tracking/example1.html">Example 1</a></li>
+            <li><a href="examples/image-tracking/example2.html">Example 2</a></li>
+            <li><a href="examples/image-tracking/example3.html">Example 3</a></li>
+            <li><a href="examples/image-tracking/example4.html">Example 4</a></li>
+            <li><a href="examples/image-tracking/three.html">Three.js Integration</a></li>
+        </ul>
+        <h2>Face-Tracking</h2>
+        <ul>
+            <li><a href="examples/face-tracking/debug.html">Debug Mode</a></li>
+            <li><a href="examples/face-tracking/example1.html">Basic Face Tracking</a></li>
+            <li><a href="examples/face-tracking/example2.html">Advanced Example</a></li>
+            <li><a href="examples/face-tracking/example3.html">Effects Example</a></li>
+            <li><a href="examples/face-tracking/three-css.html">CSS 3D Render</a></li>
+            <li><a href="examples/face-tracking/three-facemesh.html">Face Mesh</a></li>
+            <li><a href="examples/face-tracking/three.html">Three.js Demo</a></li>
+            <li><a href="examples/face-tracking/three-blendshapes.html">Blend Shapes</a></li>
+        </ul>
+    </body>
+</html>

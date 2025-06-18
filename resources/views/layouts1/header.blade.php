@@ -2,7 +2,7 @@
     use Illuminate\Support\Facades\Auth;
     $user = Auth::user();
     if (!$user || !$user->role) {
-        header('Location: /');
+        header('Location: /login');
         exit;
     }
 @endphp

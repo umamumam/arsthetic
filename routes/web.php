@@ -5,9 +5,9 @@ use App\Http\Controllers\MarkerController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PhotoboothController;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// Route::get('/', function () {
+//     return view('welcome');
+// });
 
 Route::get('/dashboard', function () {
     return view('dashboard');
@@ -20,7 +20,7 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
-Route::get('/ar/scan', [MarkerController::class, 'showAR']);
+Route::get('/', [MarkerController::class, 'showAR']);
 Route::prefix('markers')->group(function () {
     // ... routes existing lainnya ...
 
@@ -29,3 +29,6 @@ Route::prefix('markers')->group(function () {
 });
 Route::resource('markers', MarkerController::class);
 Route::resource('photobooths', PhotoboothController::class);
+Route::get('/mind-ar/compile', function () {
+    return response()->file(public_path('mind-ar-js/compile.html'));
+});

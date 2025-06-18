@@ -27,8 +27,8 @@ class MarkerController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'photos.*' => 'required|image|mimes:jpeg,png,jpg|max:2048',
-            'video' => 'required|mimes:mp4|max:20480',
+            'photos.*' => 'required|image|mimes:jpeg,png,jpg|max:3072',
+            'video' => 'required|mimes:mp4|max:10240',
             'photobooth_id' => 'required|exists:photobooths,id',
             'description' => 'nullable|string'
         ]);
@@ -85,8 +85,8 @@ class MarkerController extends Controller
     {
         $request->validate([
             'photobooth_id' => 'required|exists:photobooths,id',
-            'photos.*' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'video' => 'nullable|mimes:mp4|max:20480',
+            'photos.*' => 'nullable|image|mimes:jpeg,png,jpg|max:3072',
+            'video' => 'nullable|mimes:mp4|max:10240',
             'description' => 'nullable|string',
         ]);
 

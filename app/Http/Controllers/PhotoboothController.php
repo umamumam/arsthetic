@@ -16,7 +16,7 @@ class PhotoboothController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'nama' => 'required|max:255',
+            'nama' => 'required|max:50',
             'alamat' => 'required',
         ]);
 
@@ -28,7 +28,7 @@ class PhotoboothController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'nama' => 'required|max:255',
+            'nama' => 'required|max:50',
             'alamat' => 'required',
         ]);
 
