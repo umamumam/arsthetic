@@ -3,7 +3,7 @@
         <div class="m-header">
             <a href="../dashboard/index.html" class="b-brand text-primary">
                 <!-- ========   Change your logo from here   ============ -->
-                <img src="{{ asset('mantis/assets/images/logo-dark.svg') }}" alt="Logo">
+                <img src="{{ asset('ars.png') }}" alt="Logo">
             </a>
         </div>
         <div class="navbar-content">
@@ -16,7 +16,7 @@
                 </li>
 
                 <li class="pc-item pc-caption">
-                    <label>Page</label>
+                    <label>Pages</label>
                     <i class="ti ti-dashboard"></i>
                 </li>
                 <li class="pc-item">
@@ -32,6 +32,12 @@
                     </a>
                 </li>
                 <li class="pc-item">
+                    <a href="/markers/monthly-photos" class="pc-link">
+                        <span class="pc-micon"><i class="ti ti-folder"></i></span>
+                        <span class="pc-mtext">Folder Foto</span>
+                    </a>
+                </li>
+                <li class="pc-item">
                     <a href="/markers/upload-mind" class="pc-link">
                         <span class="pc-micon"><i class="ti ti-stack"></i></span>
                         <span class="pc-mtext">Upload Marker</span>
@@ -44,17 +50,17 @@
                     </a>
                 </li>
 
-                {{-- <li class="pc-item pc-caption">
-                    <label>Pages</label>
+                <li class="pc-item pc-caption">
+                    <label>More Menu</label>
                     <i class="ti ti-news"></i>
                 </li>
                 <li class="pc-item">
-                    <a href="../pages/login.html" class="pc-link">
-                        <span class="pc-micon"><i class="ti ti-lock"></i></span>
-                        <span class="pc-mtext">Login</span>
+                    <a href="/users" class="pc-link">
+                        <span class="pc-micon"><i class="ti ti-users"></i></span>
+                        <span class="pc-mtext">Manajemen User</span>
                     </a>
                 </li>
-                <li class="pc-item">
+                {{-- <li class="pc-item">
                     <a href="../pages/register.html" class="pc-link">
                         <span class="pc-micon"><i class="ti ti-user-plus"></i></span>
                         <span class="pc-mtext">Register</span>

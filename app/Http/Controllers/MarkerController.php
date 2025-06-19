@@ -206,4 +206,68 @@ class MarkerController extends Controller
             'fileSize' => $fileExists ? round(filesize($currentFile) / (1024 * 1024), 2) . ' MB' : null
         ]);
     }
+
+    public function monthlyPhotos(Request $request)
+    {
+        $year = $request->input('year', date('Y'));
+        $month = $request->input('month', date('m'));
+        $markers = Marker::whereYear('created_at', $year)
+            ->whereMonth('created_at', $month)
+            ->with(['photos' => function ($query) {
+                $query->where('order', 1);
+            }])
+            ->get();
+        $years = Marker::selectRaw('YEAR(created_at) as year')
+            ->distinct()
+            ->orderBy('year', 'desc')
+            ->pluck('year');
+
+        $months = [
+            '01' => 'Januari',
+            '02' => 'Februari',
+            '03' => 'Maret',
+            '04' => 'April',
+            '05' => 'Mei',
+            '06' => 'Juni',
+            '07' => 'Juli',
+            '08' => 'Agustus',
+            '09' => 'September',
+            '10' => 'Oktober',
+            '11' => 'November',
+            '12' => 'Desember'
+        ];
+
+        return view('markers.monthly_photos', compact('markers', 'years', 'months', 'year', 'month'));
+    }
+
+    public function downloadMonthlyPhotos(Request $request)
+    {
+        $year = $request->input('year');
+        $month = $request->input('month');
+        $markers = Marker::whereYear('created_at', $year)
+            ->whereMonth('created_at', $month)
+            ->with(['photos' => function ($query) {
+                $query->where('order', 1);
+            }])
+            ->get();
+        $zipFileName = "photos-{$year}-{$month}.zip";
+        $zipPath = storage_path("app/public/temp/{$zipFileName}");
+        if (!file_exists(dirname($zipPath))) {
+            mkdir(dirname($zipPath), 0777, true);
+        }
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE) === TRUE) {
+            foreach ($markers as $marker) {
+                if ($marker->photos->isNotEmpty()) {
+                    $photoPath = storage_path("app/public/{$marker->photos->first()->path}");
+                    if (file_exists($photoPath)) {
+                        $zip->addFile($photoPath, basename($photoPath));
+                    }
+                }
+            }
+            $zip->close();
+            return response()->download($zipPath)->deleteFileAfterSend(true);
+        }
+        return back()->with('error', 'Gagal membuat file zip');
+    }
 }

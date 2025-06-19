@@ -16,14 +16,17 @@
                 <table id="res-config" class="display table table-striped table-hover dt-responsive nowrap" style="width: 100%">
                     <thead class="table-primary">
                         <tr>
+                            <th>No</th>
                             <th>Nama</th>
                             <th>Alamat</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
+                        @php $no = 1; @endphp
                         @foreach ($photobooths as $pb)
                         <tr>
+                            <td>{{ $no++ }}</td>
                             <td>{{ $pb->nama }}</td>
                             <td>{{ $pb->alamat }}</td>
                             <td>
