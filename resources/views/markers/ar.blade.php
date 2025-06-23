@@ -2,6 +2,19 @@
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      position: fixed;
+      width: 100%;
+      height: 100%;
+    }
+    a-scene {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 </head>
@@ -39,11 +52,11 @@
         target-fixed>
         <a-video
           src="#video{{$i}}"
-          width="0.8"
+          width="1.778"
           height="1"
           position="0 0 0"
           rotation="0 0 0"
-          material="shader: flat;"
+          material="shader: flat; transparent: true"
           crossorigin="anonymous">
         </a-video>
       </a-entity>
@@ -51,15 +64,26 @@
   </a-scene>
 
   <script>
-    document.querySelectorAll('[id^="marker"]').forEach((marker, index) => {
-      const video = document.querySelector(`#video${index+1}`);
+    // Wait for assets to load
+    document.querySelector('a-scene').addEventListener('loaded', function() {
+      document.querySelectorAll('[id^="marker"]').forEach((marker, index) => {
+        const video = document.querySelector(`#video${index+1}`);
 
-      marker.addEventListener('targetFound', () => {
-        video.play().catch(e => console.log('Play error:', e));
-      });
+        // Adjust video aspect ratio dynamically
+        video.addEventListener('loadedmetadata', function() {
+          const aspectRatio = video.videoWidth / video.videoHeight;
+          const videoEntity = marker.querySelector('a-video');
+          videoEntity.setAttribute('width', aspectRatio);
+          console.log(`Adjusted video ${index+1} to aspect ratio: ${aspectRatio}`);
+        });
 
-      marker.addEventListener('targetLost', () => {
-        video.pause();
+        marker.addEventListener('targetFound', () => {
+          video.play().catch(e => console.log('Play error:', e));
+        });
+
+        marker.addEventListener('targetLost', () => {
+          video.pause();
+        });
       });
     });
 
