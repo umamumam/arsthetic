@@ -11,8 +11,8 @@
     renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: false">
     <a-assets>
-      <video id="video1" src="public\storage\videos\video1.mp4" preload="auto" loop muted playsinline webkit-playsinline></video>
-      <video id="video2" src="public\storage\videos\video2.mp4" preload="auto" loop muted playsinline webkit-playsinline></video>
+        <video id="video1" src="{{ asset('storage/videos/video1.mp4') }}" preload="auto" loop muted playsinline webkit-playsinline></video>
+        <video id="video2" src="{{ asset('storage/videos/video2.mp4') }}" preload="auto" loop muted playsinline webkit-playsinline></video>
     </a-assets>
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
