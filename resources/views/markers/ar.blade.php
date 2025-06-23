@@ -1,84 +1,60 @@
-<!DOCTYPE html>
 <html>
+
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body { margin: 0; overflow: hidden; }
-    #play-button {
-      position: absolute;
-      z-index: 9999;
-      padding: 15px 30px;
-      background: #4285f4;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-  </style>
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 </head>
 
 <body>
-  <button id="play-button" style="display:none;">Tap to Enable AR</button>
-
-  <a-scene
-    mindar-image="imageTargetSrc: {{ asset('storage/markers/targets.mind') }}; autoStart: false; showStats: true;"
-    vr-mode-ui="enabled: false">
-
+  <a-scene mindar-image="imageTargetSrc: /storage/markers/targets.mind; autoStart: true;" embedded color-space="sRGB"
+    renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
     <a-assets>
-      @for($i = 1; $i <= 2; $i++)
-        <video id="video{{$i}}" src="{{ asset("storage/videos/video$i.mp4") }}"
-               preload="auto" loop muted playsinline webkit-playsinline crossorigin="anonymous">
-        </video>
-      @endfor
+        <video id="video1" src="{{ asset('storage/videos/video1.mp4') }}" preload="auto" loop muted playsinline webkit-playsinline></video>
+        <video id="video2" src="{{ asset('storage/videos/video2.mp4') }}" preload="auto" loop muted playsinline webkit-playsinline></video>
     </a-assets>
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    @for($i = 1; $i <= 2; $i++)
-      <a-entity id="marker{{$i}}" mindar-image-target="targetIndex: {{$i-1}}">
-        <a-video src="#video{{$i}}" width="1.778" height="1"
-                material="shader: flat; transparent: true">
-        </a-video>
-      </a-entity>
-    @endfor
+    <!-- Marker 1 -->
+    <a-entity id="marker1" mindar-image-target="targetIndex: 0" target-fixed>
+      <a-video src="#video1" width="0.8" height="1" position="0 0 0" rotation="0 0 0"></a-video>
+    </a-entity>
+
+    <!-- Marker 2 -->
+    <a-entity id="marker2" mindar-image-target="targetIndex: 1" target-fixed>
+      <a-video src="#video2" width="0.8" height="1" position="0 0 0" rotation="0 0 0"></a-video>
+    </a-entity>
   </a-scene>
 
   <script>
-    // Start AR setelah interaksi user
-    document.getElementById('play-button').addEventListener('click', function() {
-      this.style.display = 'none';
-      const scene = document.querySelector('a-scene');
-      scene.systems["mindar-image-system"].start();
+    const video1 = document.querySelector("#video1");
+    const video2 = document.querySelector("#video2");
 
-      // Trigger play semua video
-      document.querySelectorAll('video').forEach(v => {
-        v.play().catch(e => console.log('Video play error:', e));
-      });
+    const marker1 = document.querySelector("#marker1");
+    const marker2 = document.querySelector("#marker2");
+
+    marker1.addEventListener("targetFound", () => {
+      video1.play();
+    });
+    marker1.addEventListener("targetLost", () => {
+      video1.pause();
     });
 
-    // Tampilkan tombol play jika AR tidak auto start
-    setTimeout(() => {
-      if (!document.querySelector('a-scene').hasLoaded) {
-        document.getElementById('play-button').style.display = 'block';
-      }
-    }, 2000);
+    marker2.addEventListener("targetFound", () => {
+      video2.play();
+    });
+    marker2.addEventListener("targetLost", () => {
+      video2.pause();
+    });
 
-    // Handle marker detection
-    document.querySelector('a-scene').addEventListener('loaded', function() {
-      document.querySelectorAll('[id^="marker"]').forEach((marker, index) => {
-        const video = document.querySelector(`#video${index+1}`);
-
-        marker.addEventListener('targetFound', () => {
-          video.play().catch(e => console.log('Marker play error:', e));
-        });
-
-        marker.addEventListener('targetLost', () => {
-          video.pause();
-        });
-      });
+    // Optional: trigger play() with user gesture to unlock autoplay
+    window.addEventListener("click", () => {
+      video1.play().catch(() => { });
+      video2.play().catch(() => { });
     });
   </script>
 </body>
+
 </html>
