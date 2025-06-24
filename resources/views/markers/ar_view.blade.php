@@ -1,156 +1,104 @@
-@extends('layouts1.app')
+<!doctype html>
+<html>
+<head>
+    <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-detector.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-handler.js"></script>
 
-@section('content')
-<div class="container-fluid">
-    <div class="card shadow mb-4">
-        <div class="card-header py-3 bg-primary">
-            <h5 class="m-0 font-weight-bold text-white">AR Camera</h5>
-        </div>
-        <div class="card-body">
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i> Arahkan kamera ke marker yang sesuai
-            </div>
+    <script>
+        // Konfigurasi jumlah maksimal marker
+        const MAX_MARKERS = 10;
 
-            <div class="text-center mb-3">
-                <button id="startAR" class="btn btn-success btn-lg">
-                    <i class="fas fa-camera"></i> Start AR Camera
-                </button>
-            </div>
+        // Fungsi untuk membuat video handler dinamis
+        function createVideoHandler(markerNumber) {
+            AFRAME.registerComponent(`videohandler${markerNumber}`, {
+                init: function () {
+                    const marker = this.el;
+                    this.vid = document.querySelector(`#vid${markerNumber}`);
 
-            <div id="arContainer" style="display: none;">
-                <div style="margin: 0; overflow: hidden; position: relative;">
-                    <a-scene vr-mode-ui="enabled: false" loading-screen="enabled: false;"
-                        arjs='sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;'
-                        id="scene" embedded>
-                        <a-assets>
-                            @foreach($markers as $marker)
-                            <video id="vid{{ $marker['number'] }}" src="{{ $marker['video'] }}" preload="auto" loop
-                                muted playsinline webkit-playsinline>
-                            </video>
-                            @endforeach
-                        </a-assets>
+                    marker.addEventListener('markerFound', function () {
+                        this.vid.play();
+                        console.log(`Marker ${markerNumber} ditemukan`);
+                    }.bind(this));
 
-                        @foreach($markers as $marker)
-                        <a-marker type="pattern" preset="custom" url="{{ $marker['patt'] }}"
-                            id="marker{{ $marker['number'] }}" smooth="true" smoothCount="10" smoothTolerance="0.01"
-                            smoothThreshold="5">
-                            <a-video src="#vid{{ $marker['number'] }}" width="1.6" height="0.9" position="0 0.1 0"
-                                rotation="-90 0 0">
-                            </a-video>
-                        </a-marker>
-                        @endforeach
-
-                        <a-entity camera></a-entity>
-                    </a-scene>
-
-                    <button id="stopAR" class="btn btn-danger"
-                        style="position: absolute; bottom: 20px; left: 20px; z-index: 9999;">
-                        <i class="fas fa-stop"></i> Stop AR
-                    </button>
-                </div>
-            </div>
-
-            <div class="mt-4">
-                <h5>Daftar Marker dan Video:</h5>
-                <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>No</th>
-                                <th>Marker File</th>
-                                <th>Video File</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($markers as $marker)
-                            <tr>
-                                <td>{{ $marker['number'] }}</td>
-                                <td>{{ basename($marker['patt']) }}</td>
-                                <td>{{ basename($marker['video']) }}</td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Load Library AR.js -->
-<script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
-<script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-    const startBtn = document.getElementById('startAR');
-    const stopBtn = document.getElementById('stopAR');
-    const arContainer = document.getElementById('arContainer');
-
-    // Register video handlers for each marker
-    @foreach($markers as $marker)
-    AFRAME.registerComponent('videohandler{{ $marker['number'] }}', {
-        init: function() {
-            const marker = this.el;
-            const vid = document.querySelector("#vid{{ $marker['number'] }}");
-
-            marker.addEventListener('markerFound', function() {
-                vid.play();
-                console.log("Marker {{ $marker['number'] }} ditemukan");
-            });
-
-            marker.addEventListener('markerLost', function() {
-                vid.pause();
-                console.log("Marker {{ $marker['number'] }} hilang");
+                    marker.addEventListener('markerLost', function () {
+                        this.vid.pause();
+                        console.log(`Marker ${markerNumber} hilang`);
+                    }.bind(this));
+                }
             });
         }
-    });
 
-    // Add component to marker
-    document.querySelector("#marker{{ $marker['number'] }}").setAttribute('videohandler{{ $marker['number'] }}', '');
-    @endforeach
+        // Buat handler untuk semua marker
+        document.addEventListener('DOMContentLoaded', function() {
+            for (let i = 1; i <= MAX_MARKERS; i++) {
+                createVideoHandler(i);
+            }
+        });
+    </script>
+</head>
 
-    // Start AR
-    startBtn.addEventListener('click', function() {
-        arContainer.style.display = 'block';
-        startBtn.style.display = 'none';
+<body style="margin: 0; overflow: hidden;">
+    <a-scene vr-mode-ui="enabled: false" loading-screen="enabled: false;"
+        arjs='sourceType: webcam; debugUIEnabled: false;' id="scene" embedded gesture-detector>
+        <a-assets>
+            <!-- Video assets akan diisi secara dinamis -->
+            <?php
+            // Scan video directory
+            $videoFiles = scandir('storage/videos');
+            $videoFiles = array_filter($videoFiles, function($file) {
+                return preg_match('/^video\d+\.mp4$/i', $file);
+            });
 
-        // Reset all videos
-        @foreach($markers as $marker)
-        document.querySelector("#vid{{ $marker['number'] }}").currentTime = 0;
-        @endforeach
-    });
+            // Urutkan video secara numerik
+            natsort($videoFiles);
 
-    // Stop AR
-    stopBtn.addEventListener('click', function() {
-        arContainer.style.display = 'none';
-        startBtn.style.display = 'block';
+            foreach ($videoFiles as $index => $videoFile) {
+                $markerNumber = $index + 1;
+                echo "<video id=\"vid{$markerNumber}\" src=\"storage/videos/{$videoFile}\"
+                      preload=\"auto\" loop muted playsinline webkit-playsinline></video>";
+            }
+            ?>
+        </a-assets>
 
-        // Pause all videos
-        @foreach($markers as $marker)
-        document.querySelector("#vid{{ $marker['number'] }}").pause();
-        @endforeach
-    });
-});
-</script>
+        <!-- Marker akan diisi secara dinamis -->
+        <?php
+        // Scan marker directory
+        $markerFiles = scandir('storage/markers');
+        $markerFiles = array_filter($markerFiles, function($file) {
+            return preg_match('/^marker\d+\.patt$/i', $file);
+        });
 
-<style>
-    #arContainer {
-        width: 100%;
-        height: 70vh;
-        position: relative;
-        border: 2px solid #ddd;
-        border-radius: 8px;
-        overflow: hidden;
-    }
+        // Urutkan marker secara numerik
+        natsort($markerFiles);
 
-    #startAR,
-    #stopAR {
-        transition: all 0.3s ease;
-    }
+        foreach ($markerFiles as $index => $markerFile) {
+            $markerNumber = $index + 1;
+            echo "<a-marker type=\"pattern\" preset=\"custom\"
+                  url=\"storage/markers/{$markerFile}\"
+                  videohandler{$markerNumber} smooth=\"true\" smoothCount=\"10\"
+                  smoothTolerance=\"0.01\" smoothThreshold=\"5\"
+                  raycaster=\"objects: .clickable\" emitevents=\"true\"
+                  cursor=\"fuse: false; rayOrigin: mouse;\" id=\"marker{$markerNumber}\">
+                  <a-video src=\"#vid{$markerNumber}\" width=\"1.6\" height=\"0.9\"
+                  position=\"0 0.1 0\" rotation=\"-90 0 0\" class=\"clickable\"
+                  gesture-handler></a-video>
+                  </a-marker>";
+        }
+        ?>
 
-    .a-canvas {
-        border-radius: 8px;
-    }
-</style>
-@endsection
+        <a-entity camera></a-entity>
+    </a-scene>
+
+    <div style="position: fixed; bottom: 20px; left: 20px; color: white; background: rgba(0,0,0,0.5); padding: 10px; z-index: 9999;">
+        <p>Scan salah satu marker:</p>
+        <?php
+        foreach ($markerFiles as $index => $markerFile) {
+            $markerNumber = $index + 1;
+            echo "<p>{$markerNumber}. {$markerFile} (Video {$markerNumber})</p>";
+        }
+        ?>
+    </div>
+</body>
+</html>
