@@ -13,7 +13,8 @@
                 <div class="form-group">
                     <label for="patt_file" class="font-weight-bold">Pilih File .patt</label>
                     <div class="custom-file">
-                        <input type="file" class="custom-file-input" id="patt_file" name="patt_file" accept=".patt" required>
+                        <input type="file" class="custom-file-input" id="patt_file" name="patt_file" accept=".patt"
+                            required>
                         <label class="custom-file-label" for="patt_file">Choose file</label>
                     </div>
                     <small class="form-text text-muted">
@@ -25,7 +26,7 @@
                 </button>
             </form>
 
-            <div id="uploadResult"></div>
+            <div id="uploadResult" class="mt-4"></div>
         </div>
     </div>
 
@@ -36,7 +37,7 @@
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table id="pattTable" class="display table table-striped table-hover dt-responsive nowrap" style="width:100%">
+                <table id="pattTable" class="table table-striped table-hover" style="width:100%">
                     <thead class="table-primary">
                         <tr>
                             <th>No</th>
@@ -47,28 +48,35 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($pattFiles as $index => $file)
+                        @if(count($pattFiles) > 0)
+                        @foreach($pattFiles as $index => $file)
                         <tr>
                             <td>{{ $index + 1 }}</td>
                             <td>{{ $file['name'] }}</td>
                             <td>{{ $file['size'] }}</td>
                             <td>{{ $file['modified_at'] }}</td>
                             <td>
+                                @if(isset($file['url']))
                                 <div class="btn-group" role="group">
                                     <a href="{{ $file['url'] }}" class="btn btn-info btn-sm" download title="Download">
                                         <i class="fas fa-download"></i>
                                     </a>
-                                    <button class="btn btn-danger btn-sm delete-patt" data-filename="{{ $file['name'] }}" title="Hapus">
+                                    <button class="btn btn-danger btn-sm delete-patt"
+                                        data-filename="{{ $file['name'] }}" title="Hapus">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
+                                @else
+                                -
+                                @endif
                             </td>
                         </tr>
-                        @empty
+                        @endforeach
+                        @else
                         <tr>
                             <td colspan="5" class="text-center">Belum ada file .patt</td>
                         </tr>
-                        @endforelse
+                        @endif
                     </tbody>
                 </table>
             </div>
@@ -78,20 +86,27 @@
 
 <!-- Load jQuery dan DataTables -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css">
-<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
-<script src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap4.min.css">
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap4.min.js"></script>
 
 <script>
-// Inisialisasi DataTable
-$(document).ready(function() {
-    $('#pattTable').DataTable({
-        responsive: true,
-        language: {
-            url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/id.json'
-        }
-    });
+    $(document).ready(function() {
+    // Inisialisasi DataTable dengan error handling
+    try {
+        $('#pattTable').DataTable({
+            responsive: true,
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json'
+            },
+            columnDefs: [
+                { responsivePriority: 1, targets: 0 },
+                { responsivePriority: 2, targets: -1 }
+            ]
+        });
+    } catch (e) {
+        console.error('Error initializing DataTable:', e);
+    }
 
     // Update nama file yang dipilih di input file
     $('.custom-file-input').on('change', function() {
@@ -141,7 +156,7 @@ $(document).ready(function() {
     });
 
     // Fungsi untuk menghapus file
-    $('.delete-patt').on('click', function() {
+    $(document).on('click', '.delete-patt', function() {
         if (!confirm('Yakin ingin menghapus file ini?')) return;
 
         var filename = $(this).data('filename');
@@ -166,6 +181,9 @@ $(document).ready(function() {
                 } else {
                     showAlert('danger', response.message);
                 }
+            },
+            error: function(xhr) {
+                showAlert('danger', xhr.responseJSON?.message || 'Terjadi kesalahan');
             }
         });
     });
@@ -181,18 +199,21 @@ $(document).ready(function() {
 </script>
 
 <style>
-.card {
-    border-radius: 10px;
-}
-.card-header {
-    border-radius: 10px 10px 0 0 !important;
-}
-.custom-file-label::after {
-    content: "Browse";
-}
-.btn-sm {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
-}
+    .card {
+        border-radius: 10px;
+    }
+
+    .card-header {
+        border-radius: 10px 10px 0 0 !important;
+    }
+
+    .custom-file-label::after {
+        content: "Browse";
+    }
+
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
 </style>
 @endsection
