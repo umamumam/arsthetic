@@ -144,10 +144,45 @@ class MarkerController extends Controller
         return redirect()->route('markers.index')->with('success', 'Marker deleted successfully.');
     }
 
+    // public function showAR()
+    // {
+    //     $markers = Marker::with('photos')->get();
+    //     return view('markers.ar', compact('markers'));
+    // }
     public function showAR()
     {
-        $markers = Marker::with('photos')->get();
-        return view('markers.ar', compact('markers'));
+        // Ambil semua file .patt dari storage
+        $pattFiles = Storage::disk('public')->files('markers');
+        $pattFiles = array_filter($pattFiles, function ($file) {
+            return pathinfo($file, PATHINFO_EXTENSION) === 'patt';
+        });
+
+        // Ambil semua video dari storage
+        $videoFiles = Storage::disk('public')->files('videos');
+        $videoFiles = array_filter($videoFiles, function ($file) {
+            return in_array(pathinfo($file, PATHINFO_EXTENSION), ['mp4', 'webm']);
+        });
+
+        // Urutkan file berdasarkan nama
+        natsort($pattFiles);
+        natsort($videoFiles);
+
+        // Gabungkan data
+        $markers = [];
+        $i = 1;
+        foreach ($pattFiles as $index => $pattFile) {
+            $videoFile = $videoFiles[$index] ?? null;
+
+            if ($videoFile) {
+                $markers[] = [
+                    'patt' => Storage::url($pattFile),
+                    'video' => Storage::url($videoFile),
+                    'number' => $i++
+                ];
+            }
+        }
+
+        return view('markers.ar_view', compact('markers'));
     }
 
     public function uploadMindFile(Request $request)
@@ -269,5 +304,109 @@ class MarkerController extends Controller
             return response()->download($zipPath)->deleteFileAfterSend(true);
         }
         return back()->with('error', 'Gagal membuat file zip');
+    }
+    public function uploadPattFile(Request $request)
+    {
+        $request->validate([
+            'patt_file' => 'required|file|mimetypes:text/plain|max:10240', // 10MB max (file .patt biasanya kecil)
+        ]);
+
+        try {
+            $directory = 'markers'; // Folder penyimpanan
+            $baseName = 'marker';
+
+            // Cari nomor terakhir yang ada
+            $existingFiles = Storage::disk('public')->files($directory);
+            $maxNumber = 0;
+
+            foreach ($existingFiles as $file) {
+                if (preg_match('/' . $baseName . '(\d+)\.patt$/', $file, $matches)) {
+                    $num = (int)$matches[1];
+                    if ($num > $maxNumber) {
+                        $maxNumber = $num;
+                    }
+                }
+            }
+
+            $nextNumber = $maxNumber + 1;
+            $fileName = $baseName . $nextNumber . '.patt';
+
+            // Simpan file baru
+            $path = $request->file('patt_file')->storeAs($directory, $fileName, 'public');
+
+            if (!Storage::disk('public')->exists($path)) {
+                throw new \Exception("File failed to save after upload");
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'File .patt berhasil diupload!',
+                'file_name' => $fileName,
+                'path' => $path,
+                'public_url' => asset(Storage::url($path)),
+                'file_info' => [
+                    'size' => round(Storage::disk('public')->size($path) / 1024, 2) . ' KB',
+                    'modified_at' => date('Y-m-d H:i:s', Storage::disk('public')->lastModified($path))
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'GAGAL: ' . $e->getMessage(),
+                'debug' => [
+                    'storage_writable' => is_writable(storage_path('app/public')),
+                    'public_writable' => is_writable(public_path('storage'))
+                ]
+            ], 500);
+        }
+    }
+    public function showPattUploadForm()
+    {
+        $directory = 'markers';
+        $pattFiles = [];
+
+        // List semua file .patt yang ada
+        $files = Storage::disk('public')->files($directory);
+
+        foreach ($files as $file) {
+            if (pathinfo($file, PATHINFO_EXTENSION) === 'patt') {
+                $pattFiles[] = [
+                    'name' => basename($file),
+                    'size' => round(Storage::disk('public')->size($file) / 1024, 2) . ' KB',
+                    'modified_at' => date('Y-m-d H:i:s', Storage::disk('public')->lastModified($file)),
+                    'url' => Storage::url($file)
+                ];
+            }
+        }
+
+        return view('markers.upload_patt', [
+            'pattFiles' => $pattFiles
+        ]);
+    }
+    public function deletePattFile(Request $request)
+    {
+        $request->validate([
+            'filename' => 'required|string'
+        ]);
+
+        try {
+            $path = 'markers/' . $request->filename;
+
+            if (!Storage::disk('public')->exists($path)) {
+                throw new \Exception("File tidak ditemukan");
+            }
+
+            Storage::disk('public')->delete($path);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'File berhasil dihapus'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus file: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

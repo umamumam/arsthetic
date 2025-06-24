@@ -44,6 +44,12 @@
                     </a>
                 </li>
                 <li class="pc-item">
+                    <a href="/markers/upload-patt" class="pc-link">
+                        <span class="pc-micon"><i class="ti ti-stack"></i></span>
+                        <span class="pc-mtext">Upload File Patt</span>
+                    </a>
+                </li>
+                <li class="pc-item">
                     <a href="{{ env('VITE_DEV_URL') . env('VITE_AR_APP_PATH') }}" class="pc-link" target="_blank">
                         <span class="pc-micon"><i class="ti ti-color-swatch"></i></span>
                         <span class="pc-mtext">Convert Foto</span>
