@@ -8,22 +8,23 @@
         </div>
         <div class="navbar-content">
             <ul class="pc-navbar">
+                @if(auth()->user()->role === 'Owner')
                 <li class="pc-item">
                     <a href="/dashboard" class="pc-link">
                         <span class="pc-micon"><i class="fas fa-home"></i></span>
                         <span class="pc-mtext">Dashboard</span>
                     </a>
                 </li>
-
-                <li class="pc-item pc-caption">
-                    <label>Pages</label>
-                    <i class="ti ti-dashboard"></i>
-                </li>
                 <li class="pc-item">
                     <a href="/photobooths" class="pc-link">
                         <span class="pc-micon"><i class="ti ti-camera"></i></span>
                         <span class="pc-mtext">Daftar Photobooth</span>
                     </a>
+                </li>
+                @endif
+                <li class="pc-item pc-caption">
+                    <label>Pages</label>
+                    <i class="ti ti-dashboard"></i>
                 </li>
                 <li class="pc-item">
                     <a href="/markers" class="pc-link">
@@ -55,7 +56,7 @@
                         <span class="pc-mtext">Convert Foto</span>
                     </a>
                 </li>
-
+                @if(auth()->user()->role === 'Owner')
                 <li class="pc-item pc-caption">
                     <label>More Menu</label>
                     <i class="ti ti-news"></i>
@@ -66,6 +67,7 @@
                         <span class="pc-mtext">Manajemen User</span>
                     </a>
                 </li>
+                @endif
                 {{-- <li class="pc-item">
                     <a href="../pages/register.html" class="pc-link">
                         <span class="pc-micon"><i class="ti ti-user-plus"></i></span>

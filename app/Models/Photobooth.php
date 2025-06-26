@@ -9,9 +9,13 @@ class Photobooth extends Model
 {
     use HasFactory;
     protected $table = 'photobooths';
-    protected $fillable = ['nama', 'alamat'];
+    protected $fillable = ['nama', 'alamat', 'user_id'];
     public function markers()
     {
         return $this->hasMany(Marker::class);
+    }
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

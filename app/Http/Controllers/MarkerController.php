@@ -12,9 +12,21 @@ use Illuminate\Support\Facades\Storage;
 
 class MarkerController extends Controller
 {
+    // public function index()
+    // {
+    //     $markers = Marker::with(['photos', 'photobooth'])->get();
+    //     return view('markers.index', compact('markers'));
+    // }
     public function index()
     {
-        $markers = Marker::with(['photos', 'photobooth'])->get();
+        $markers = auth()->user()->role === 'Owner'
+            ? Marker::with(['photos', 'photobooth.user'])->get()
+            : Marker::with(['photos', 'photobooth.user'])
+            ->whereHas('photobooth', function ($query) {
+                $query->where('user_id', auth()->id());
+            })
+            ->get();
+
         return view('markers.index', compact('markers'));
     }
 

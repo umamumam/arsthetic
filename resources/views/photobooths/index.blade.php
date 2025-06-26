@@ -2,7 +2,6 @@
 
 @section('content')
 <div class="row">
-    <!-- Photobooth table start -->
     <div class="col-sm-12">
         <div class="card">
             <div class="card-header">
@@ -19,6 +18,7 @@
                             <th>No</th>
                             <th>Nama</th>
                             <th>Alamat</th>
+                            <th>Admin</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
@@ -29,6 +29,7 @@
                             <td>{{ $no++ }}</td>
                             <td>{{ $pb->nama }}</td>
                             <td>{{ $pb->alamat }}</td>
+                            <td>{{ $pb->user->name }}</td>
                             <td>
                                 <!-- Tombol Edit -->
                                 <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editModal{{ $pb->id }}">
@@ -64,6 +65,14 @@
                                                 <label>Alamat</label>
                                                 <textarea name="alamat" class="form-control" required>{{ $pb->alamat }}</textarea>
                                             </div>
+                                            <div class="mb-2">
+                                                <label>Admin</label>
+                                                <select name="user_id" class="form-control" required>
+                                                    @foreach($users as $user)
+                                                    <option value="{{ $user->id }}" {{ $pb->user_id == $user->id ? 'selected' : '' }}>{{ $user->name }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
                                         </div>
                                         <div class="modal-footer">
                                             <button class="btn btn-primary">Simpan</button>
@@ -98,6 +107,14 @@
                     <div class="mb-2">
                         <label>Alamat</label>
                         <textarea name="alamat" class="form-control" required></textarea>
+                    </div>
+                    <div class="mb-2">
+                        <label>Admin</label>
+                        <select name="user_id" class="form-control" required>
+                            @foreach($users as $user)
+                            <option value="{{ $user->id }}">{{ $user->name }}</option>
+                            @endforeach
+                        </select>
                     </div>
                 </div>
                 <div class="modal-footer">
