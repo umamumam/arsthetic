@@ -1,60 +1,123 @@
 <html>
 
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 </head>
 
 <body>
-  <a-scene mindar-image="imageTargetSrc: /storage/markers/targets.mind; autoStart: true;" embedded color-space="sRGB"
-    renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false">
-    <a-assets>
-        <video id="video1" src="/storage/videos/video1.mp4" preload="auto" loop muted playsinline webkit-playsinline></video>
-        <video id="video2" src="/storage/videos/video2.mp4" preload="auto" loop muted playsinline webkit-playsinline></video>
-    </a-assets>
+    <div id="loading-status" style="position: fixed; top: 10px; left: 10px; color: white; z-index: 9999;"></div>
 
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    <a-scene mindar-image="imageTargetSrc: /storage/markers/targets.mind; autoStart: true;" embedded color-space="sRGB"
+        renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false"
+        device-orientation-permission-ui="enabled: false">
+        <a-assets id="dynamic-assets"></a-assets>
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+        <!-- Marker entities akan digenerate oleh JavaScript -->
+    </a-scene>
 
-    <!-- Marker 1 -->
-    <a-entity id="marker1" mindar-image-target="targetIndex: 0" target-fixed>
-      <a-video src="#video1" width="0.8" height="1" position="0 0 0" rotation="0 0 0"></a-video>
-    </a-entity>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const loadingStatus = document.getElementById('loading-status');
+            const assetsContainer = document.getElementById('dynamic-assets');
+            const scene = document.querySelector('a-scene');
 
-    <!-- Marker 2 -->
-    <a-entity id="marker2" mindar-image-target="targetIndex: 1" target-fixed>
-      <a-video src="#video2" width="0.8" height="1" position="0 0 0" rotation="0 0 0"></a-video>
-    </a-entity>
-  </a-scene>
+            // Konfigurasi
+            const MAX_VIDEOS = 10; // Jumlah maksimal video yang akan dicoba load
+            const videos = {};
+            const markers = {};
 
-  <script>
-    const video1 = document.querySelector("#video1");
-    const video2 = document.querySelector("#video2");
+            // 1. Generate video elements dan marker secara dinamis
+            loadingStatus.textContent = "Loading videos...";
 
-    const marker1 = document.querySelector("#marker1");
-    const marker2 = document.querySelector("#marker2");
+            for (let i = 1; i <= MAX_VIDEOS; i++) {
+                try {
+                    // Cek apakah video ada sebelum membuat elemen
+                    const videoUrl = `/storage/videos/video${i}.mp4`;
+                    const videoExists = await checkFileExists(videoUrl);
 
-    marker1.addEventListener("targetFound", () => {
-      video1.play();
-    });
-    marker1.addEventListener("targetLost", () => {
-      video1.pause();
-    });
+                    if (!videoExists) {
+                        console.log(`Video ${i} tidak ditemukan, berhenti loading`);
+                        break;
+                    }
 
-    marker2.addEventListener("targetFound", () => {
-      video2.play();
-    });
-    marker2.addEventListener("targetLost", () => {
-      video2.pause();
-    });
+                    // Buat elemen video
+                    const videoEl = document.createElement('video');
+                    videoEl.id = `video${i}`;
+                    videoEl.src = videoUrl;
+                    videoEl.setAttribute('preload', 'auto');
+                    videoEl.setAttribute('loop', 'true');
+                    videoEl.setAttribute('muted', 'true');
+                    videoEl.setAttribute('playsinline', 'true');
+                    videoEl.setAttribute('webkit-playsinline', 'true');
+                    assetsContainer.appendChild(videoEl);
 
-    // Optional: trigger play() with user gesture to unlock autoplay
-    window.addEventListener("click", () => {
-      video1.play().catch(() => { });
-      video2.play().catch(() => { });
-    });
-  </script>
+                    // Buat marker entity
+                    const markerEl = document.createElement('a-entity');
+                    markerEl.id = `marker${i}`;
+                    markerEl.setAttribute('mindar-image-target', `targetIndex: ${i - 1}`);
+
+                    const videoObj = document.createElement('a-video');
+                    videoObj.setAttribute('src', `#video${i}`);
+                    videoObj.setAttribute('width', '0.8');
+                    videoObj.setAttribute('height', '1');
+                    videoObj.setAttribute('position', '0 0 0');
+                    videoObj.setAttribute('rotation', '0 0 0');
+
+                    markerEl.appendChild(videoObj);
+                    scene.appendChild(markerEl);
+
+                    // Simpan reference
+                    videos[i] = videoEl;
+                    markers[i] = markerEl;
+
+                    console.log(`Berhasil load video${i}.mp4`);
+
+                } catch (error) {
+                    console.error(`Error loading video${i}:`, error);
+                    break;
+                }
+            }
+
+            // 2. Setup event listeners setelah semua element tercreate
+            loadingStatus.textContent = "Setting up AR...";
+
+            Object.keys(markers).forEach(num => {
+                markers[num].addEventListener("targetFound", () => {
+                    videos[num].currentTime = 0;
+                    videos[num].play().catch(e => {
+                        console.log(`Gagal autoplay video${num}:`, e);
+                        loadingStatus.textContent = `Tap screen to play video ${num}`;
+                    });
+                });
+
+                markers[num].addEventListener("targetLost", () => {
+                    videos[num].pause();
+                });
+            });
+
+            // 3. Handler untuk unlock autoplay
+            window.addEventListener("click", () => {
+                Object.values(videos).forEach(video => {
+                    video.play().catch(e => console.log("Fallback play error:", e));
+                });
+                loadingStatus.textContent = "AR ready - Scan markers";
+            }, { once: true });
+
+            loadingStatus.textContent = "AR ready - Tap screen to start";
+        });
+
+        // Fungsi untuk mengecek apakah file video ada
+        async function checkFileExists(url) {
+            try {
+                const response = await fetch(url, { method: 'HEAD' });
+                return response.ok;
+            } catch {
+                return false;
+            }
+        }
+    </script>
 </body>
 
 </html>
