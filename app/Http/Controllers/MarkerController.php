@@ -163,11 +163,29 @@ class MarkerController extends Controller
     // }
     public function showARku()
     {
-        $pattFiles = Storage::disk('public')->files('markers');
-        $videoFiles = Storage::disk('public')->files('videos');
+        // Cek apakah file targets.mind ada
+        $mindFileExists = Storage::disk('public')->exists('markers/targets.mind');
 
-        // Filter dan sort files
-        $markers = []; // Gabungkan patt dan video
+        if (!$mindFileExists) {
+            abort(404, 'File targets.mind tidak ditemukan di storage/markers');
+        }
+
+        // Ambil video dari storage
+        $videoFiles = Storage::disk('public')->files('videos');
+        $videoFiles = array_filter($videoFiles, function ($file) {
+            return in_array(pathinfo($file, PATHINFO_EXTENSION), ['mp4', 'webm']);
+        });
+        natsort($videoFiles);
+
+        // Format data untuk view
+        $markers = [];
+        foreach ($videoFiles as $index => $videoFile) {
+            $markers[] = [
+                'number' => $index + 1,
+                'video' => Storage::url($videoFile)
+            ];
+        }
+
         return view('markers.ar', compact('markers'));
     }
     public function showAR()

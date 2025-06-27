@@ -17,17 +17,31 @@
       align-items: center;
       z-index: 9999;
       font-family: Arial, sans-serif;
+      flex-direction: column;
+    }
+    #start-button {
+      padding: 10px 20px;
+      margin-top: 15px;
+      background: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
   <div id="loading-overlay">
-    <p>Loading AR experience...</p>
+    <p>AR Experience Ready</p>
+    <button id="start-button">Start AR</button>
+    <p id="status-text" style="margin-top: 15px; font-size: 0.9em;"></p>
   </div>
 
-  <a-scene mindar-image="imageTargetSrc: /storage/markers/targets.mind; autoStart: false;" embedded color-space="sRGB"
-    renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false">
+  <a-scene mindar-image="imageTargetSrc: /storage/markers/targets.mind; autoStart: false;"
+           embedded color-space="sRGB"
+           renderer="colorManagement: true, physicallyCorrectLights"
+           vr-mode-ui="enabled: false"
+           device-orientation-permission-ui="enabled: false">
     <a-assets>
       @foreach($markers as $marker)
         <video id="video{{ $marker['number'] }}"
@@ -44,8 +58,7 @@
 
     @foreach($markers as $marker)
       <a-entity id="marker{{ $marker['number'] }}"
-                mindar-image-target="targetIndex: {{ $marker['number'] - 1 }}"
-                target-fixed>
+                mindar-image-target="targetIndex: {{ $marker['number'] - 1 }}">
         <a-video src="#video{{ $marker['number'] }}"
                  width="0.8"
                  height="1"
@@ -56,48 +69,83 @@
   </a-scene>
 
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       const loadingOverlay = document.getElementById('loading-overlay');
+      const startButton = document.getElementById('start-button');
+      const statusText = document.getElementById('status-text');
       const scene = document.querySelector('a-scene');
 
-      // Initialize videos and markers
+      // Initialize video and marker elements
       const videos = {};
       const markers = {};
 
       @foreach($markers as $marker)
-        videos['video{{ $marker['number'] }}'] = document.querySelector("#video{{ $marker['number'] }}");
-        markers['marker{{ $marker['number'] }}'] = document.querySelector("#marker{{ $marker['number'] }}");
+        videos[{{ $marker['number'] }}] = document.querySelector("#video{{ $marker['number'] }}");
+        markers[{{ $marker['number'] }}] = document.querySelector("#marker{{ $marker['number'] }}");
 
-        markers['marker{{ $marker['number'] }}'].addEventListener("targetFound", () => {
-          videos['video{{ $marker['number'] }}'].play().catch(e => console.log(e));
+        // Set video properties for better mobile compatibility
+        videos[{{ $marker['number'] }}].playsInline = true;
+        videos[{{ $marker['number'] }}].webkitPlaysInline = true;
+        videos[{{ $marker['number'] }}].crossOrigin = "anonymous";
+
+        // Marker event handlers
+        markers[{{ $marker['number'] }}].addEventListener("targetFound", () => {
+          videos[{{ $marker['number'] }}].currentTime = 0;
+          videos[{{ $marker['number'] }}].play().catch(e => {
+            statusText.textContent = "Tap screen to play video";
+          });
         });
 
-        markers['marker{{ $marker['number'] }}'].addEventListener("targetLost", () => {
-          videos['video{{ $marker['number'] }}'].pause();
+        markers[{{ $marker['number'] }}].addEventListener("targetLost", () => {
+          videos[{{ $marker['number'] }}].pause();
         });
       @endforeach
 
-      // Start AR after user interaction
-      const startAR = () => {
-        loadingOverlay.style.display = 'none';
-        const mindarScene = scene.systems["mindar-image-system"];
-        mindarScene.start();
+      // Start AR experience
+      const startAR = async () => {
+        try {
+          statusText.textContent = "Initializing AR...";
 
-        // Pre-play videos to satisfy autoplay policy
-        Object.values(videos).forEach(video => {
-          video.play().then(() => video.pause()).catch(e => console.log(e));
-        });
+          // First satisfy autoplay policy
+          await Promise.all(Object.values(videos).map(video => {
+            return video.play().then(() => video.pause()).catch(() => {});
+          });
+
+          // Start MindAR
+          const mindarScene = scene.systems["mindar-image-system"];
+          await mindarScene.start();
+
+          // Verify targets loaded
+          if (!mindarScene.targets || mindarScene.targets.length === 0) {
+            throw new Error("Failed to load AR targets");
+          }
+
+          statusText.textContent = "Point camera at a marker";
+          startButton.style.display = 'none';
+        } catch (error) {
+          console.error("AR initialization failed:", error);
+          statusText.textContent = "Error: " + error.message;
+          startButton.textContent = "Try Again";
+          startButton.onclick = startAR;
+        }
       };
 
-      // Start on click
-      document.body.addEventListener('click', startAR, { once: true });
+      // Start on button click
+      startButton.addEventListener('click', startAR);
 
-      // Fallback timeout
+      // Fallback for slow loading
       setTimeout(() => {
-        if (loadingOverlay.style.display !== 'none') {
-          loadingOverlay.innerHTML = '<p>Click anywhere to start AR</p>';
+        if (loadingOverlay.style.display !== 'none' && !startButton.disabled) {
+          statusText.textContent = "Having trouble? Try clicking Start AR again";
         }
-      }, 3000);
+      }, 5000);
+
+      // Additional click handler for iOS
+      document.addEventListener('click', () => {
+        Object.values(videos).forEach(video => {
+          video.play().catch(() => {});
+        });
+      }, { once: true });
     });
   </script>
 </body>
