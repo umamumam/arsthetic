@@ -4,45 +4,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-  <style>
-    #start-message {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-      font-family: Arial, sans-serif;
-      text-align: center;
-      flex-direction: column;
-    }
-
-    #start-button {
-      padding: 15px 30px;
-      font-size: 18px;
-      margin-top: 20px;
-      background: #4285f4;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-  </style>
 </head>
 
 <body>
-  <div id="start-message">
-    <h2>AR Experience Ready</h2>
-    <p>Please click the button below to start the AR experience</p>
-    <button id="start-button">Start AR</button>
-  </div>
-
-  <a-scene mindar-image="imageTargetSrc: /storage/markers/targets.mind; autoStart: false;" embedded color-space="sRGB"
+  <a-scene mindar-image="imageTargetSrc: /storage/markers/targets.mind; autoStart: true;" embedded color-space="sRGB"
     renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: false">
     <a-assets>
@@ -64,59 +29,30 @@
   </a-scene>
 
   <script>
-    // Wait for everything to load
-    document.addEventListener('DOMContentLoaded', () => {
-      const scene = document.querySelector('a-scene');
-      const video1 = document.querySelector("#video1");
-      const video2 = document.querySelector("#video2");
-      const marker1 = document.querySelector("#marker1");
-      const marker2 = document.querySelector("#marker2");
-      const startButton = document.querySelector("#start-button");
-      const startMessage = document.querySelector("#start-message");
+    const video1 = document.querySelector("#video1");
+    const video2 = document.querySelector("#video2");
 
-      // Start AR when button is clicked
-      startButton.addEventListener('click', () => {
-        // Hide the start message
-        startMessage.style.display = 'none';
+    const marker1 = document.querySelector("#marker1");
+    const marker2 = document.querySelector("#marker2");
 
-        // Start the AR experience
-        const sceneEl = document.querySelector('a-scene');
-        const mindarScene = sceneEl.systems["mindar-image-system"];
-        mindarScene.start(); // Start the AR system
+    marker1.addEventListener("targetFound", () => {
+      video1.play();
+    });
+    marker1.addEventListener("targetLost", () => {
+      video1.pause();
+    });
 
-        // Pre-play videos (required for iOS)
-        video1.play().catch(e => console.log("Video1 play error:", e));
-        video2.play().catch(e => console.log("Video2 play error:", e));
+    marker2.addEventListener("targetFound", () => {
+      video2.play();
+    });
+    marker2.addEventListener("targetLost", () => {
+      video2.pause();
+    });
 
-        // Pause immediately (we'll play when marker is found)
-        video1.pause();
-        video2.pause();
-      });
-
-      // Marker event listeners
-      marker1.addEventListener("targetFound", () => {
-        video1.play().catch(e => console.log("Marker1 video play error:", e));
-      });
-
-      marker1.addEventListener("targetLost", () => {
-        video1.pause();
-        video1.currentTime = 0;
-      });
-
-      marker2.addEventListener("targetFound", () => {
-        video2.play().catch(e => console.log("Marker2 video play error:", e));
-      });
-
-      marker2.addEventListener("targetLost", () => {
-        video2.pause();
-        video2.currentTime = 0;
-      });
-
-      // Fallback: click anywhere to unlock audio
-      document.addEventListener('click', () => {
-        video1.play().catch(e => console.log("Fallback video1 play error:", e));
-        video2.play().catch(e => console.log("Fallback video2 play error:", e));
-      }, { once: true });
+    // Optional: trigger play() with user gesture to unlock autoplay
+    window.addEventListener("click", () => {
+      video1.play().catch(() => { });
+      video2.play().catch(() => { });
     });
   </script>
 </body>
