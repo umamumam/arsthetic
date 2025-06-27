@@ -18,13 +18,12 @@
     </a-scene>
 
     <script>
-        // Register komponen stabilizer terlebih dahulu
+        // Register komponen stabilizer
         AFRAME.registerComponent('stabilized', {
             tick: function () {
-                // Kunci rotasi pada sumbu X dan Z
-                this.el.object3D.rotation.x = -Math.PI / 2; // Tetap -90 derajat
+                // Kunci rotasi sesuai kebutuhan
+                this.el.object3D.rotation.x = THREE.MathUtils.degToRad(90); // Convert 90 derajat ke radian
                 this.el.object3D.rotation.z = 0; // Tidak boleh miring
-                // Pertahankan rotasi Y sesuai tracking marker
             }
         });
 
@@ -37,39 +36,6 @@
             const MAX_VIDEOS = 10000;
             const videos = {};
             const markers = {};
-            const videoElements = {};
-
-            // Fungsi untuk mengatur ukuran video berdasarkan aspect ratio
-            const setupVideoSize = (videoEl, videoObj) => {
-                return new Promise((resolve) => {
-                    videoEl.onloadedmetadata = () => {
-                        const aspectRatio = videoEl.videoWidth / videoEl.videoHeight;
-                        let width, height;
-
-                        // Sesuaikan ukuran berdasarkan orientasi video
-                        if (aspectRatio > 1) { // Landscape
-                            width = 1.6;
-                            height = width / aspectRatio;
-                        } else { // Portrait atau square
-                            height = 1.6;
-                            width = height * aspectRatio;
-                        }
-
-                        videoObj.setAttribute('width', width);
-                        videoObj.setAttribute('height', height);
-                        resolve();
-                    };
-
-                    // Fallback jika metadata tidak load
-                    setTimeout(() => {
-                        if (!videoEl.videoWidth) {
-                            videoObj.setAttribute('width', 1.0);
-                            videoObj.setAttribute('height', 1.0);
-                            resolve();
-                        }
-                    }, 2000);
-                });
-            };
 
             // 1. Generate video elements dan marker secara dinamis
             loadingStatus.textContent = "Loading videos...";
@@ -101,16 +67,31 @@
                     markerEl.id = `marker${i}`;
                     markerEl.setAttribute('mindar-image-target', `targetIndex: ${i - 1}`);
 
-                    // Buat video entity dengan pengaturan yang lebih stabil
+                    // Buat video entity dengan transform yang disesuaikan
                     const videoObj = document.createElement('a-video');
                     videoObj.setAttribute('src', `#video${i}`);
-                    videoObj.setAttribute('position', '0 0 0.01'); // Sedikit di atas marker
-                    videoObj.setAttribute('rotation', '-90 0 0'); // Menghadap ke atas
+
+                    // Set transform sesuai data Anda
+                    videoObj.setAttribute('position', {
+                        x: 0.008,
+                        y: 0.03,
+                        z: 0.0131
+                    });
+
+                    videoObj.setAttribute('rotation', {
+                        x: 90,  // Derajat (A-Frame akan mengkonversi ke radian)
+                        y: 0,
+                        z: 0
+                    });
+
+                    videoObj.setAttribute('scale', {
+                        x: 1.99244,
+                        y: 1.97426,
+                        z: 1
+                    });
+
                     videoObj.setAttribute('material', 'shader: flat; transparent: true');
                     videoObj.setAttribute('stabilized', '');
-
-                    // Atur ukuran setelah metadata video dimuat
-                    await setupVideoSize(videoEl, videoObj);
 
                     markerEl.appendChild(videoObj);
                     scene.appendChild(markerEl);
@@ -118,7 +99,6 @@
                     // Simpan reference
                     videos[i] = videoEl;
                     markers[i] = markerEl;
-                    videoElements[i] = videoObj;
 
                     console.log(`Berhasil load video${i}.mp4`);
 
@@ -138,21 +118,10 @@
                         console.log(`Gagal autoplay video${num}:`, e);
                         loadingStatus.textContent = `Tap screen to play video ${num}`;
                     });
-
-                    // Tambahkan efek halus saat muncul
-                    videoElements[num].setAttribute('animation', {
-                        property: 'scale',
-                        from: '0.9 0.9 0.9',
-                        to: '1 1 1',
-                        dur: 300,
-                        easing: 'easeOutElastic'
-                    });
                 });
 
                 markers[num].addEventListener("targetLost", () => {
                     videos[num].pause();
-                    // Reset animasi
-                    videoElements[num].removeAttribute('animation');
                 });
             });
 
