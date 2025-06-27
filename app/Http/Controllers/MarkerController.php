@@ -156,9 +156,18 @@ class MarkerController extends Controller
         return redirect()->route('markers.index')->with('success', 'Marker deleted successfully.');
     }
 
+    // public function showARku()
+    // {
+    //     $markers = Marker::with('photos')->get();
+    //     return view('markers.ar', compact('markers'));
+    // }
     public function showARku()
     {
-        $markers = Marker::with('photos')->get();
+        $pattFiles = Storage::disk('public')->files('markers');
+        $videoFiles = Storage::disk('public')->files('videos');
+
+        // Filter dan sort files
+        $markers = []; // Gabungkan patt dan video
         return view('markers.ar', compact('markers'));
     }
     public function showAR()

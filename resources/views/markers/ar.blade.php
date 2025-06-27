@@ -1,60 +1,104 @@
 <html>
-
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <style>
+    #loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      font-family: Arial, sans-serif;
+    }
+  </style>
 </head>
-
 <body>
-  <a-scene mindar-image="imageTargetSrc: /storage/markers/targets.mind; autoStart: true;" embedded color-space="sRGB"
+  <div id="loading-overlay">
+    <p>Loading AR experience...</p>
+  </div>
+
+  <a-scene mindar-image="imageTargetSrc: /storage/markers/targets.mind; autoStart: false;" embedded color-space="sRGB"
     renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: false">
     <a-assets>
-        <video id="video1" src="{{ asset('storage/videos/video1.mp4') }}" preload="auto" loop muted playsinline webkit-playsinline></video>
-        <video id="video2" src="{{ asset('storage/videos/video2.mp4') }}" preload="auto" loop muted playsinline webkit-playsinline></video>
+      @foreach($markers as $marker)
+        <video id="video{{ $marker['number'] }}"
+               src="{{ $marker['video'] }}"
+               preload="auto"
+               loop
+               muted
+               playsinline
+               webkit-playsinline></video>
+      @endforeach
     </a-assets>
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <!-- Marker 1 -->
-    <a-entity id="marker1" mindar-image-target="targetIndex: 0" target-fixed>
-      <a-video src="#video1" width="0.8" height="1" position="0 0 0" rotation="0 0 0"></a-video>
-    </a-entity>
-
-    <!-- Marker 2 -->
-    <a-entity id="marker2" mindar-image-target="targetIndex: 1" target-fixed>
-      <a-video src="#video2" width="0.8" height="1" position="0 0 0" rotation="0 0 0"></a-video>
-    </a-entity>
+    @foreach($markers as $marker)
+      <a-entity id="marker{{ $marker['number'] }}"
+                mindar-image-target="targetIndex: {{ $marker['number'] - 1 }}"
+                target-fixed>
+        <a-video src="#video{{ $marker['number'] }}"
+                 width="0.8"
+                 height="1"
+                 position="0 0 0"
+                 rotation="0 0 0"></a-video>
+      </a-entity>
+    @endforeach
   </a-scene>
 
   <script>
-    const video1 = document.querySelector("#video1");
-    const video2 = document.querySelector("#video2");
+    document.addEventListener('DOMContentLoaded', () => {
+      const loadingOverlay = document.getElementById('loading-overlay');
+      const scene = document.querySelector('a-scene');
 
-    const marker1 = document.querySelector("#marker1");
-    const marker2 = document.querySelector("#marker2");
+      // Initialize videos and markers
+      const videos = {};
+      const markers = {};
 
-    marker1.addEventListener("targetFound", () => {
-      video1.play();
-    });
-    marker1.addEventListener("targetLost", () => {
-      video1.pause();
-    });
+      @foreach($markers as $marker)
+        videos['video{{ $marker['number'] }}'] = document.querySelector("#video{{ $marker['number'] }}");
+        markers['marker{{ $marker['number'] }}'] = document.querySelector("#marker{{ $marker['number'] }}");
 
-    marker2.addEventListener("targetFound", () => {
-      video2.play();
-    });
-    marker2.addEventListener("targetLost", () => {
-      video2.pause();
-    });
+        markers['marker{{ $marker['number'] }}'].addEventListener("targetFound", () => {
+          videos['video{{ $marker['number'] }}'].play().catch(e => console.log(e));
+        });
 
-    // Optional: trigger play() with user gesture to unlock autoplay
-    window.addEventListener("click", () => {
-      video1.play().catch(() => { });
-      video2.play().catch(() => { });
+        markers['marker{{ $marker['number'] }}'].addEventListener("targetLost", () => {
+          videos['video{{ $marker['number'] }}'].pause();
+        });
+      @endforeach
+
+      // Start AR after user interaction
+      const startAR = () => {
+        loadingOverlay.style.display = 'none';
+        const mindarScene = scene.systems["mindar-image-system"];
+        mindarScene.start();
+
+        // Pre-play videos to satisfy autoplay policy
+        Object.values(videos).forEach(video => {
+          video.play().then(() => video.pause()).catch(e => console.log(e));
+        });
+      };
+
+      // Start on click
+      document.body.addEventListener('click', startAR, { once: true });
+
+      // Fallback timeout
+      setTimeout(() => {
+        if (loadingOverlay.style.display !== 'none') {
+          loadingOverlay.innerHTML = '<p>Click anywhere to start AR</p>';
+        }
+      }, 3000);
     });
   </script>
 </body>
-
 </html>
