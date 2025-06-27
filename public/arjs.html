@@ -1,215 +1,100 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AR Marker System - Auto Load</title>
+    <title>AR Marker System</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://cdn.jsdelivr.net/npm/aframe@1.0.4/dist/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ar.js@3.2.0/aframe/build/aframe-ar.min.js"></script>
 
     <style>
-        body { margin: 0; overflow: hidden; background: #000; }
-        #loading {
+        body { margin: 0; overflow: hidden; }
+        .loading {
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
+            background: #000;
+            color: #fff;
             display: flex;
             justify-content: center;
             align-items: center;
-            color: white;
-            font-family: Arial;
             z-index: 1000;
-        }
-        #marker-list {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            color: white;
-            background: rgba(0,0,0,0.7);
-            padding: 10px;
-            border-radius: 5px;
-            font-family: Arial;
         }
     </style>
 </head>
 <body>
-    <div id="loading">Loading AR System...</div>
-    <div id="marker-list"></div>
+    <div class="loading" id="loading">Loading AR System...</div>
 
-    <a-scene
-        vr-mode-ui="enabled: false"
-        loading-screen="enabled: false"
-        embedded
-        arjs="sourceType: webcam; debugUIEnabled: false;"
-    >
-        <a-assets id="assets-container"></a-assets>
-        <a-entity id="markers-container"></a-entity>
+    <a-scene vr-mode-ui="enabled: false" embedded arjs="sourceType: webcam; debugUIEnabled: false;">
+        <a-assets>
+            <!-- Video Assets - Auto Generated -->
+            <video id="vid1" src="/storage/videos/video1.mp4" preload="auto" loop muted playsinline></video>
+            <video id="vid2" src="/storage/videos/video2.mp4" preload="auto" loop muted playsinline></video>
+            <!-- Tambahkan lebih banyak sesuai kebutuhan -->
+        </a-assets>
+
+        <!-- Marker 1 -->
+        <a-marker
+            type="pattern"
+            preset="custom"
+            url="/storage/markers/marker1.patt"
+            id="marker1">
+            <a-video
+                src="#vid1"
+                width="1.6"
+                height="0.9"
+                position="0 0 0"
+                rotation="-90 0 0">
+            </a-video>
+        </a-marker>
+
+        <!-- Marker 2 -->
+        <a-marker
+            type="pattern"
+            preset="custom"
+            url="/storage/markers/marker2.patt"
+            id="marker2">
+            <a-video
+                src="#vid2"
+                width="1.6"
+                height="0.9"
+                position="0 0 0"
+                rotation="-90 0 0">
+            </a-video>
+        </a-marker>
+
         <a-entity camera></a-entity>
     </a-scene>
 
     <script>
-    // Konfigurasi
-    const CONFIG = {
-        maxMarkers: 20, // Maksimal jumlah marker yang akan dicari
-        basePath: '/storage',
-        videoFormats: ['mp4', 'webm']
-    };
+    // Auto hide loader when AR ready
+    document.querySelector('a-scene').addEventListener('loaded', function() {
+        document.getElementById('loading').style.display = 'none';
+    });
 
-    // Main Loader
-    document.addEventListener('DOMContentLoaded', async () => {
-        const loadingElem = document.getElementById('loading');
-        const markerListElem = document.getElementById('marker-list');
+    // Video Controller
+    AFRAME.registerComponent('video-control', {
+        init: function() {
+            const marker = this.el;
+            const vidId = marker.id.replace('marker', 'vid');
+            const video = document.getElementById(vidId);
 
-        try {
-            // 1. Cari semua marker dan video yang tersedia
-            const availablePairs = await findMarkerVideoPairs();
-
-            if (availablePairs.length === 0) {
-                loadingElem.innerHTML = "No markers found!<br>Please add marker.patt and video.mp4 files";
-                return;
-            }
-
-            // 2. Tampilkan daftar marker yang terdeteksi
-            markerListElem.innerHTML = '<strong>Available Markers:</strong><br>' +
-                availablePairs.map(p => `Marker ${p.number}`).join('<br>');
-
-            // 3. Generate assets dan marker
-            generateAssets(availablePairs);
-            generateMarkers(availablePairs);
-
-            // 4. Setup event listeners
-            setupVideoControllers();
-
-            // 5. Sembunyikan loading screen saat scene ready
-            document.querySelector('a-scene').addEventListener('loaded', () => {
-                loadingElem.style.display = 'none';
+            marker.addEventListener('markerFound', () => {
+                if (video) {
+                    video.currentTime = 0;
+                    video.play().catch(e => console.log('Autoplay blocked'));
+                }
             });
 
-        } catch (error) {
-            loadingElem.innerHTML = `Error: ${error.message}`;
-            console.error(error);
+            marker.addEventListener('markerLost', () => {
+                if (video) video.pause();
+            });
         }
     });
 
-    // Fungsi untuk mencari pasangan marker dan video
-    async function findMarkerVideoPairs() {
-        const pairs = [];
-
-        for (let i = 1; i <= CONFIG.maxMarkers; i++) {
-            // Cek apakah marker dan video ada
-            const markerPath = `${CONFIG.basePath}/markers/marker${i}.patt`;
-            const videoPath = await findVideoForMarker(i);
-
-            if (await checkFileExists(markerPath) {
-                pairs.push({
-                    number: i,
-                    markerUrl: markerPath,
-                    videoUrl: videoPath || null
-                });
-            }
-        }
-
-        return pairs;
-    }
-
-    // Cari video yang sesuai untuk marker (support multiple formats)
-    async function findVideoForMarker(markerNumber) {
-        for (const format of CONFIG.videoFormats) {
-            const videoPath = `${CONFIG.basePath}/videos/video${markerNumber}.${format}`;
-            if (await checkFileExists(videoPath)) {
-                return videoPath;
-            }
-        }
-        return null;
-    }
-
-    // Cek apakah file ada (dengan teknik fallback)
-    async function checkFileExists(url) {
-        try {
-            const response = await fetch(url, { method: 'HEAD' });
-            return response.ok;
-        } catch {
-            return false;
-        }
-    }
-
-    // Generate video assets
-    function generateAssets(pairs) {
-        const assetsContainer = document.getElementById('assets-container');
-
-        pairs.forEach(pair => {
-            if (pair.videoUrl) {
-                const videoElem = document.createElement('video');
-                videoElem.id = `vid${pair.number}`;
-                videoElem.setAttribute('src', pair.videoUrl);
-                videoElem.setAttribute('preload', 'auto');
-                videoElem.setAttribute('loop', 'true');
-                videoElem.setAttribute('muted', 'true');
-                videoElem.setAttribute('playsinline', 'true');
-                assetsContainer.appendChild(videoElem);
-            }
-        });
-    }
-
-    // Generate marker elements
-    function generateMarkers(pairs) {
-        const markersContainer = document.getElementById('markers-container');
-
-        pairs.forEach(pair => {
-            if (pair.videoUrl) {
-                const marker = document.createElement('a-marker');
-                marker.setAttribute('type', 'pattern');
-                marker.setAttribute('preset', 'custom');
-                marker.setAttribute('url', pair.markerUrl);
-                marker.setAttribute('id', `marker${pair.number}`);
-                marker.setAttribute('smooth', 'true');
-                marker.setAttribute('smooth-count', '10');
-                marker.setAttribute('smooth-tolerance', '0.01');
-                marker.setAttribute('smooth-threshold', '5');
-
-                const video = document.createElement('a-video');
-                video.setAttribute('src', `#vid${pair.number}`);
-                video.setAttribute('width', '1.6');
-                video.setAttribute('height', '0.9');
-                video.setAttribute('position', '0 0.1 0');
-                video.setAttribute('rotation', '-90 0 0');
-                video.setAttribute('class', 'clickable');
-                video.setAttribute('gesture-handler', '');
-
-                marker.appendChild(video);
-                markersContainer.appendChild(marker);
-            }
-        });
-    }
-
-    // Setup video controllers
-    function setupVideoControllers() {
-        AFRAME.registerComponent('video-control', {
-            init: function() {
-                const markerId = this.el.id;
-                const vidNumber = markerId.replace('marker', '');
-                const video = document.getElementById(`vid${vidNumber}`);
-
-                if (!video) return;
-
-                this.video = video;
-                this.marker = this.el;
-
-                this.marker.addEventListener('markerFound', () => {
-                    this.video.currentTime = 0;
-                    this.video.play().catch(e => console.log(`Autoplay blocked for ${markerId}`));
-                });
-
-                this.marker.addEventListener('markerLost', () => {
-                    this.video.pause();
-                });
-            }
-        });
-
-        // Terapkan ke semua marker
-        document.querySelectorAll('a-marker').forEach(marker => {
-            marker.setAttribute('video-control', '');
-        });
-    }
+    // Apply to all markers
+    document.querySelectorAll('a-marker').forEach(marker => {
+        marker.setAttribute('video-control', '');
+    });
     </script>
 </body>
 </html>
