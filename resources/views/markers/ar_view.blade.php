@@ -1,104 +1,209 @@
 <!doctype html>
 <html>
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-detector.js"></script>
     <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-handler.js"></script>
 
-    <script>
-        // Konfigurasi jumlah maksimal marker
-        const MAX_MARKERS = 10;
-
-        // Fungsi untuk membuat video handler dinamis
-        function createVideoHandler(markerNumber) {
-            AFRAME.registerComponent(`videohandler${markerNumber}`, {
-                init: function () {
-                    const marker = this.el;
-                    this.vid = document.querySelector(`#vid${markerNumber}`);
-
-                    marker.addEventListener('markerFound', function () {
-                        this.vid.play();
-                        console.log(`Marker ${markerNumber} ditemukan`);
-                    }.bind(this));
-
-                    marker.addEventListener('markerLost', function () {
-                        this.vid.pause();
-                        console.log(`Marker ${markerNumber} hilang`);
-                    }.bind(this));
-                }
-            });
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
         }
+        .marker-info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 9999;
+            font-family: Arial, sans-serif;
+        }
+    </style>
 
-        // Buat handler untuk semua marker
-        document.addEventListener('DOMContentLoaded', function() {
-            for (let i = 1; i <= MAX_MARKERS; i++) {
-                createVideoHandler(i);
+    <script>
+        // Komponen untuk stabilisasi video
+        AFRAME.registerComponent('video-stabilizer', {
+            schema: {
+                markerNumber: { type: 'number', default: 1 }
+            },
+
+            init: function() {
+                this.video = document.querySelector(`#vid${this.data.markerNumber}`);
+                this.initialPosition = new THREE.Vector3(0, 0.1, 0);
+                this.initialRotation = new THREE.Euler(-Math.PI/2, 0, 0);
+
+                // Set initial position and rotation
+                this.el.object3D.position.copy(this.initialPosition);
+                this.el.object3D.rotation.copy(this.initialRotation);
+            },
+
+            tick: function() {
+                // Kunci posisi dan rotasi
+                this.el.object3D.position.copy(this.initialPosition);
+                this.el.object3D.rotation.copy(this.initialRotation);
+
+                // Update video texture jika perlu
+                if (this.video && this.video.readyState >= 2) {
+                    const videoTexture = this.el.components.material.material.map;
+                    if (videoTexture) {
+                        videoTexture.needsUpdate = true;
+                    }
+                }
+            }
+        });
+
+        // Handler untuk video
+        AFRAME.registerComponent('video-controller', {
+            schema: {
+                markerNumber: { type: 'number', default: 1 }
+            },
+
+            init: function() {
+                this.video = document.querySelector(`#vid${this.data.markerNumber}`);
+                this.marker = this.el;
+
+                this.markerFound = this.markerFound.bind(this);
+                this.markerLost = this.markerLost.bind(this);
+
+                this.marker.addEventListener('markerFound', this.markerFound);
+                this.marker.addEventListener('markerLost', this.markerLost);
+            },
+
+            markerFound: function() {
+                if (this.video) {
+                    this.video.currentTime = 0;
+                    this.video.play().catch(e => console.log(`Autoplay blocked for video ${this.data.markerNumber}`));
+                }
+            },
+
+            markerLost: function() {
+                if (this.video) {
+                    this.video.pause();
+                }
+            },
+
+            remove: function() {
+                this.marker.removeEventListener('markerFound', this.markerFound);
+                this.marker.removeEventListener('markerLost', this.markerLost);
             }
         });
     </script>
 </head>
 
-<body style="margin: 0; overflow: hidden;">
-    <a-scene vr-mode-ui="enabled: false" loading-screen="enabled: false;"
-        arjs='sourceType: webcam; debugUIEnabled: false;' id="scene" embedded gesture-detector>
-        <a-assets>
-            <!-- Video assets akan diisi secara dinamis -->
+<body>
+    <a-scene
+        vr-mode-ui="enabled: false"
+        loading-screen="enabled: false;"
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+        renderer="logarithmicDepthBuffer: true; precision: high;"
+        embedded
+        gesture-detector>
+
+        <a-assets timeout="30000">
             <?php
-            // Scan video directory
-            $videoFiles = scandir('storage/videos');
-            $videoFiles = array_filter($videoFiles, function($file) {
-                return preg_match('/^video\d+\.mp4$/i', $file);
-            });
+            // Ambil file marker dan video yang sudah terurut
+            $markerFiles = [];
+            $videoFiles = [];
 
-            // Urutkan video secara numerik
-            natsort($videoFiles);
+            // Scan direktori
+            $markerDir = 'storage/markers/';
+            $videoDir = 'storage/videos/';
 
-            foreach ($videoFiles as $index => $videoFile) {
-                $markerNumber = $index + 1;
-                echo "<video id=\"vid{$markerNumber}\" src=\"storage/videos/{$videoFile}\"
-                      preload=\"auto\" loop muted playsinline webkit-playsinline></video>";
+            // Cari file marker dan video yang sesuai pola
+            foreach (scandir($markerDir) as $file) {
+                if (preg_match('/^marker(\d+)\.patt$/i', $file, $matches)) {
+                    $number = (int)$matches[1];
+                    $markerFiles[$number] = $file;
+                }
+            }
+
+            foreach (scandir($videoDir) as $file) {
+                if (preg_match('/^video(\d+)\.mp4$/i', $file, $matches)) {
+                    $number = (int)$matches[1];
+                    $videoFiles[$number] = $file;
+                }
+            }
+
+            // Urutkan berdasarkan nomor
+            ksort($markerFiles);
+            ksort($videoFiles);
+
+            // Generate video assets hanya untuk yang punya marker
+            foreach ($markerFiles as $number => $markerFile) {
+                if (isset($videoFiles[$number])) {
+                    $videoFile = $videoFiles[$number];
+                    echo "<video id=\"vid{$number}\" src=\"{$videoDir}{$videoFile}\"
+                          preload=\"auto\" loop muted playsinline webkit-playsinline></video>";
+                }
             }
             ?>
         </a-assets>
 
-        <!-- Marker akan diisi secara dinamis -->
         <?php
-        // Scan marker directory
-        $markerFiles = scandir('storage/markers');
-        $markerFiles = array_filter($markerFiles, function($file) {
-            return preg_match('/^marker\d+\.patt$/i', $file);
-        });
+        // Buat marker untuk setiap pasangan yang valid
+        foreach ($markerFiles as $number => $markerFile) {
+            if (isset($videoFiles[$number])) {
+                echo "
+                <a-marker
+                    type=\"pattern\"
+                    preset=\"custom\"
+                    url=\"{$markerDir}{$markerFile}\"
+                    id=\"marker{$number}\"
+                    video-controller=\"markerNumber: {$number}\"
+                    smooth=\"true\"
+                    smoothCount=\"10\"
+                    smoothTolerance=\"0.01\"
+                    smoothThreshold=\"5\"
+                    raycaster=\"objects: .clickable\"
+                    emitevents=\"true\"
+                    cursor=\"fuse: false; rayOrigin: mouse;\">
 
-        // Urutkan marker secara numerik
-        natsort($markerFiles);
-
-        foreach ($markerFiles as $index => $markerFile) {
-            $markerNumber = $index + 1;
-            echo "<a-marker type=\"pattern\" preset=\"custom\"
-                  url=\"storage/markers/{$markerFile}\"
-                  videohandler{$markerNumber} smooth=\"true\" smoothCount=\"10\"
-                  smoothTolerance=\"0.01\" smoothThreshold=\"5\"
-                  raycaster=\"objects: .clickable\" emitevents=\"true\"
-                  cursor=\"fuse: false; rayOrigin: mouse;\" id=\"marker{$markerNumber}\">
-                  <a-video src=\"#vid{$markerNumber}\" width=\"1.6\" height=\"0.9\"
-                  position=\"0 0.1 0\" rotation=\"-90 0 0\" class=\"clickable\"
-                  gesture-handler></a-video>
-                  </a-marker>";
+                    <a-video
+                        src=\"#vid{$number}\"
+                        width=\"1.6\"
+                        height=\"0.9\"
+                        position=\"0 0.1 0\"
+                        rotation=\"-90 0 0\"
+                        class=\"clickable\"
+                        video-stabilizer=\"markerNumber: {$number}\"
+                        gesture-handler
+                        material=\"shader: flat; transparent: true\">
+                    </a-video>
+                </a-marker>";
+            }
         }
         ?>
 
         <a-entity camera></a-entity>
     </a-scene>
 
-    <div style="position: fixed; bottom: 20px; left: 20px; color: white; background: rgba(0,0,0,0.5); padding: 10px; z-index: 9999;">
+    <div class="marker-info">
         <p>Scan salah satu marker:</p>
         <?php
-        foreach ($markerFiles as $index => $markerFile) {
-            $markerNumber = $index + 1;
-            echo "<p>{$markerNumber}. {$markerFile} (Video {$markerNumber})</p>";
+        foreach ($markerFiles as $number => $markerFile) {
+            if (isset($videoFiles[$number])) {
+                echo "<p>Marker {$number}: {$markerFile} (Video {$number}.mp4)</p>";
+            }
         }
         ?>
     </div>
+
+    <script>
+        // Unlock autoplay policy
+        document.addEventListener('DOMContentLoaded', () => {
+            document.body.addEventListener('click', () => {
+                const videos = document.querySelectorAll('video');
+                videos.forEach(video => {
+                    video.play().catch(e => console.log('Autoplay blocked:', e));
+                });
+            }, { once: true });
+        });
+    </script>
 </body>
 </html>
