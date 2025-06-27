@@ -17,152 +17,124 @@
         <!-- Marker entities akan digenerate oleh JavaScript -->
     </a-scene>
 
-<script>
-// Register komponen untuk tampilan yang lebih baik
-AFRAME.registerComponent('ar-ui', {
-    init: function() {
-        // Background semi-transparan
-        this.background = document.createElement('a-plane');
-        this.background.setAttribute('color', '#000000');
-        this.background.setAttribute('opacity', '0.5');
-        this.background.setAttribute('width', '1.8');
-        this.background.setAttribute('height', '0.8');
-        this.background.setAttribute('position', '0 0.6 0');
-        this.el.appendChild(this.background);
+    <script>
+        // Komponen untuk stabilisasi posisi
+        AFRAME.registerComponent('stable-position', {
+            tick: function () {
+                // Kunci posisi dan rotasi
+                this.el.object3D.position.set(0, 0, 0);
+                this.el.object3D.rotation.set(0, 0, 0);
+            }
+        });
 
-        // Text instruksi
-        this.instructionText = document.createElement('a-text');
-        this.instructionText.setAttribute('value', 'AR ready - Scan markers');
-        this.instructionText.setAttribute('color', '#FFFFFF');
-        this.instructionText.setAttribute('align', 'center');
-        this.instructionText.setAttribute('position', '0 0.6 0.01');
-        this.instructionText.setAttribute('width', '3');
-        this.el.appendChild(this.instructionText);
+        document.addEventListener('DOMContentLoaded', async () => {
+            const loadingStatus = document.getElementById('loading-status');
+            const assetsContainer = document.getElementById('dynamic-assets');
+            const scene = document.querySelector('a-scene');
 
-        // Text PHOTO PLACE
-        this.photoText = document.createElement('a-text');
-        this.photoText.setAttribute('value', 'PHOTO PLACE');
-        this.photoText.setAttribute('color', '#FFFFFF');
-        this.photoText.setAttribute('align', 'center');
-        this.photoText.setAttribute('position', '0 0.4 0.01');
-        this.photoText.setAttribute('width', '3');
-        this.photoText.setAttribute('font', 'exo2bold');
-        this.el.appendChild(this.photoText);
-    }
-});
+            // Konfigurasi
+            const MAX_VIDEOS = 10000;
+            const videos = {};
+            const markers = {};
 
-document.addEventListener('DOMContentLoaded', async () => {
-    const loadingStatus = document.getElementById('loading-status');
-    const assetsContainer = document.getElementById('dynamic-assets');
-    const scene = document.querySelector('a-scene');
+            // 1. Generate video elements dan marker secara dinamis
+            loadingStatus.textContent = "Loading videos...";
 
-    // Konfigurasi UI
-    const uiContainer = document.createElement('a-entity');
-    uiContainer.setAttribute('ar-ui', '');
-    uiContainer.setAttribute('position', '0 0 -1');
-    scene.appendChild(uiContainer);
+            for (let i = 1; i <= MAX_VIDEOS; i++) {
+                try {
+                    // Cek apakah video ada sebelum membuat elemen
+                    const videoUrl = `/storage/videos/video${i}.mp4`;
+                    const videoExists = await checkFileExists(videoUrl);
 
-    // Konfigurasi video
-    const MAX_VIDEOS = 10000;
-    const videos = {};
-    const markers = {};
+                    if (!videoExists) {
+                        console.log(`Video ${i} tidak ditemukan, berhenti loading`);
+                        break;
+                    }
 
-    // 1. Generate video elements dan marker secara dinamis
-    loadingStatus.textContent = "Loading videos...";
+                    // Buat elemen video
+                    const videoEl = document.createElement('video');
+                    videoEl.id = `video${i}`;
+                    videoEl.src = videoUrl;
+                    videoEl.setAttribute('preload', 'auto');
+                    videoEl.setAttribute('loop', 'true');
+                    videoEl.setAttribute('muted', 'true');
+                    videoEl.setAttribute('playsinline', 'true');
+                    videoEl.setAttribute('webkit-playsinline', 'true');
+                    assetsContainer.appendChild(videoEl);
 
-    for (let i = 1; i <= MAX_VIDEOS; i++) {
-        try {
-            const videoUrl = `/storage/videos/video${i}.mp4`;
-            const videoExists = await checkFileExists(videoUrl);
+                    // Buat marker entity
+                    const markerEl = document.createElement('a-entity');
+                    markerEl.id = `marker${i}`;
+                    markerEl.setAttribute('mindar-image-target', `targetIndex: ${i - 1}`);
 
-            if (!videoExists) {
-                console.log(`Video ${i} tidak ditemukan, berhenti loading`);
-                break;
+                    // Buat video entity dengan posisi stabil
+                    const videoObj = document.createElement('a-video');
+                    videoObj.setAttribute('src', `#video${i}`);
+                    videoObj.setAttribute('width', '1');
+                    videoObj.setAttribute('height', '1');
+                    videoObj.setAttribute('position', '0 0 0');
+                    videoObj.setAttribute('rotation', '0 0 0');
+                    videoObj.setAttribute('stable-position', '');
+                    videoObj.setAttribute('material', 'shader: flat; side: front');
+
+                    // Container untuk video
+                    const videoContainer = document.createElement('a-entity');
+                    videoContainer.setAttribute('position', '0 0 0');
+                    videoContainer.appendChild(videoObj);
+
+                    markerEl.appendChild(videoContainer);
+                    scene.appendChild(markerEl);
+
+                    // Simpan reference
+                    videos[i] = videoEl;
+                    markers[i] = markerEl;
+
+                    console.log(`Berhasil load video${i}.mp4`);
+
+                } catch (error) {
+                    console.error(`Error loading video${i}:`, error);
+                    break;
+                }
             }
 
-            // Buat elemen video
-            const videoEl = document.createElement('video');
-            videoEl.id = `video${i}`;
-            videoEl.src = videoUrl;
-            videoEl.setAttribute('preload', 'auto');
-            videoEl.setAttribute('loop', 'true');
-            videoEl.setAttribute('muted', 'true');
-            videoEl.setAttribute('playsinline', 'true');
-            videoEl.setAttribute('webkit-playsinline', 'true');
-            assetsContainer.appendChild(videoEl);
+            // 2. Setup event listeners setelah semua element tercreate
+            loadingStatus.textContent = "Setting up AR...";
 
-            // Buat marker entity
-            const markerEl = document.createElement('a-entity');
-            markerEl.id = `marker${i}`;
-            markerEl.setAttribute('mindar-image-target', `targetIndex: ${i - 1}`);
+            Object.keys(markers).forEach(num => {
+                markers[num].addEventListener("targetFound", () => {
+                    videos[num].currentTime = 0;
+                    videos[num].play().catch(e => {
+                        console.log(`Gagal autoplay video${num}:`, e);
+                        loadingStatus.textContent = `Tap screen to play video ${num}`;
+                    });
+                });
 
-            // Buat video entity dengan layout yang rapi
-            const videoObj = document.createElement('a-video');
-            videoObj.setAttribute('src', `#video${i}`);
-            videoObj.setAttribute('width', '1.6');
-            videoObj.setAttribute('height', '0.9');
-            videoObj.setAttribute('position', '0 0 0');
-            videoObj.setAttribute('rotation', '0 0 0');
-            videoObj.setAttribute('material', 'shader: flat; transparent: false');
-
-            // Container untuk video
-            const videoContainer = document.createElement('a-entity');
-            videoContainer.setAttribute('position', '0 0.1 0');
-            videoContainer.appendChild(videoObj);
-
-            markerEl.appendChild(videoContainer);
-            scene.appendChild(markerEl);
-
-            videos[i] = videoEl;
-            markers[i] = markerEl;
-
-            console.log(`Berhasil load video${i}.mp4`);
-
-        } catch (error) {
-            console.error(`Error loading video${i}:`, error);
-            break;
-        }
-    }
-
-    // 2. Setup event listeners
-    Object.keys(markers).forEach(num => {
-        markers[num].addEventListener("targetFound", () => {
-            videos[num].currentTime = 0;
-            videos[num].play().catch(e => {
-                console.log(`Gagal autoplay video${num}:`, e);
-                loadingStatus.textContent = `Tap screen to play video ${num}`;
+                markers[num].addEventListener("targetLost", () => {
+                    videos[num].pause();
+                });
             });
 
-            // Update UI saat marker ditemukan
-            uiContainer.setAttribute('visible', 'false');
+            // 3. Handler untuk unlock autoplay
+            window.addEventListener("click", () => {
+                Object.values(videos).forEach(video => {
+                    video.play().catch(e => console.log("Fallback play error:", e));
+                });
+                loadingStatus.textContent = "AR ready - Scan markers";
+            }, { once: true });
+
+            loadingStatus.textContent = "AR ready - Tap screen to start";
         });
 
-        markers[num].addEventListener("targetLost", () => {
-            videos[num].pause();
-            uiContainer.setAttribute('visible', 'true');
-        });
-    });
-
-    // 3. Handler untuk unlock autoplay
-    window.addEventListener("click", () => {
-        Object.values(videos).forEach(video => {
-            video.play().catch(e => console.log("Fallback play error:", e));
-        });
-        loadingStatus.textContent = "AR ready - Scan markers";
-    }, { once: true });
-
-    loadingStatus.textContent = "AR ready - Tap screen to start";
-});
-
-async function checkFileExists(url) {
-    try {
-        const response = await fetch(url, { method: 'HEAD' });
-        return response.ok;
-    } catch {
-        return false;
-    }
-}
-</script>
+        // Fungsi untuk mengecek apakah file video ada
+        async function checkFileExists(url) {
+            try {
+                const response = await fetch(url, { method: 'HEAD' });
+                return response.ok;
+            } catch {
+                return false;
+            }
+        }
+    </script>
 </body>
 
 </html>
