@@ -257,8 +257,9 @@ class MarkerController extends Controller
 
             if ($pattFile) {
                 $markers[] = [
-                    'patt' => Storage::url($pattFile),
-                    'video' => $videoFile ? Storage::url($videoFile) : null,
+                    'id' => 'marker' . $i,
+                    'pattern_url' => Storage::url($pattFile),
+                    'video_url' => $videoFile ? Storage::url($videoFile) : null,
                     'number' => $i
                 ];
             }
@@ -267,7 +268,6 @@ class MarkerController extends Controller
         return view('markers.ar_view', compact('markers'));
     }
 
-    // Helper function untuk mencari file berdasarkan nomor
     protected function findFileByNumber($files, $number)
     {
         foreach ($files as $file) {
