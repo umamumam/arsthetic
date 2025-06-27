@@ -53,12 +53,12 @@
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
     <!-- Marker 1 -->
-    <a-entity id="marker1" mindar-image-target="targetIndex: 0" target-fixed>
+    <a-entity id="marker1" mindar-image-target="targetIndex: 0">
       <a-video src="#video1" width="0.8" height="1" position="0 0 0" rotation="0 0 0"></a-video>
     </a-entity>
 
     <!-- Marker 2 -->
-    <a-entity id="marker2" mindar-image-target="targetIndex: 1" target-fixed>
+    <a-entity id="marker2" mindar-image-target="targetIndex: 1">
       <a-video src="#video2" width="0.8" height="1" position="0 0 0" rotation="0 0 0"></a-video>
     </a-entity>
   </a-scene>
@@ -75,48 +75,68 @@
       const startMessage = document.querySelector("#start-message");
 
       // Start AR when button is clicked
-      startButton.addEventListener('click', () => {
-        // Hide the start message
-        startMessage.style.display = 'none';
+      startButton.addEventListener('click', async () => {
+        try {
+          // Hide the start message
+          startMessage.style.display = 'none';
 
-        // Start the AR experience
-        const sceneEl = document.querySelector('a-scene');
-        const mindarScene = sceneEl.systems["mindar-image-system"];
-        mindarScene.start(); // Start the AR system
+          // First play and immediately pause videos to satisfy browser autoplay policy
+          await video1.play();
+          video1.pause();
 
-        // Pre-play videos (required for iOS)
-        video1.play().catch(e => console.log("Video1 play error:", e));
-        video2.play().catch(e => console.log("Video2 play error:", e));
+          await video2.play();
+          video2.pause();
 
-        // Pause immediately (we'll play when marker is found)
-        video1.pause();
-        video2.pause();
+          // Start the AR experience
+          const sceneEl = document.querySelector('a-scene');
+          const mindarScene = sceneEl.systems["mindar-image-system"];
+          await mindarScene.start();
+
+          // Add slight delay to ensure AR is fully initialized
+          setTimeout(() => {
+            // Force video to play when marker is found (iOS workaround)
+            marker1.addEventListener("targetFound", () => {
+              video1.play().catch(e => console.log("Marker1 video play error:", e));
+            });
+
+            marker2.addEventListener("targetFound", () => {
+              video2.play().catch(e => console.log("Marker2 video play error:", e));
+            });
+          }, 500);
+
+        } catch (error) {
+          console.error("AR initialization error:", error);
+        }
       });
 
-      // Marker event listeners
+      // Marker event listeners with improved handling
       marker1.addEventListener("targetFound", () => {
+        video1.currentTime = 0;
         video1.play().catch(e => console.log("Marker1 video play error:", e));
       });
 
       marker1.addEventListener("targetLost", () => {
         video1.pause();
-        video1.currentTime = 0;
       });
 
       marker2.addEventListener("targetFound", () => {
+        video2.currentTime = 0;
         video2.play().catch(e => console.log("Marker2 video play error:", e));
       });
 
       marker2.addEventListener("targetLost", () => {
         video2.pause();
-        video2.currentTime = 0;
       });
 
-      // Fallback: click anywhere to unlock audio
+      // Additional fallback for browsers that need multiple interactions
+      let interactionCount = 0;
       document.addEventListener('click', () => {
-        video1.play().catch(e => console.log("Fallback video1 play error:", e));
-        video2.play().catch(e => console.log("Fallback video2 play error:", e));
-      }, { once: true });
+        interactionCount++;
+        if (interactionCount === 2) { // Second click
+          video1.play().catch(e => console.log("Fallback video1 play error:", e));
+          video2.play().catch(e => console.log("Fallback video2 play error:", e));
+        }
+      });
     });
   </script>
 </body>
