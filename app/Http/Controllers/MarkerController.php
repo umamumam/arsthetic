@@ -188,40 +188,95 @@ class MarkerController extends Controller
 
         return view('markers.ar', compact('markers'));
     }
+    // public function showAR()
+    // {
+    //     // Ambil semua file .patt dari storage
+    //     $pattFiles = Storage::disk('public')->files('markers');
+    //     $pattFiles = array_filter($pattFiles, function ($file) {
+    //         return pathinfo($file, PATHINFO_EXTENSION) === 'patt';
+    //     });
+
+    //     // Ambil semua video dari storage
+    //     $videoFiles = Storage::disk('public')->files('videos');
+    //     $videoFiles = array_filter($videoFiles, function ($file) {
+    //         return in_array(pathinfo($file, PATHINFO_EXTENSION), ['mp4', 'webm']);
+    //     });
+
+    //     // Urutkan file berdasarkan nama
+    //     natsort($pattFiles);
+    //     natsort($videoFiles);
+
+    //     // Gabungkan data
+    //     $markers = [];
+    //     $i = 1;
+    //     foreach ($pattFiles as $index => $pattFile) {
+    //         $videoFile = $videoFiles[$index] ?? null;
+
+    //         if ($videoFile) {
+    //             $markers[] = [
+    //                 'patt' => Storage::url($pattFile),
+    //                 'video' => Storage::url($videoFile),
+    //                 'number' => $i++
+    //             ];
+    //         }
+    //     }
+
+    //     return view('markers.ar_view', compact('markers'));
+    // }
     public function showAR()
     {
-        // Ambil semua file .patt dari storage
-        $pattFiles = Storage::disk('public')->files('markers');
-        $pattFiles = array_filter($pattFiles, function ($file) {
-            return pathinfo($file, PATHINFO_EXTENSION) === 'patt';
-        });
+        // Ambil dan filter file .patt
+        $pattFiles = collect(Storage::disk('public')->files('markers'))
+            ->filter(function ($file) {
+                return pathinfo($file, PATHINFO_EXTENSION) === 'patt';
+            })
+            ->sortBy(function ($file) {
+                return (int) filter_var($file, FILTER_SANITIZE_NUMBER_INT);
+            })
+            ->values()
+            ->all();
 
-        // Ambil semua video dari storage
-        $videoFiles = Storage::disk('public')->files('videos');
-        $videoFiles = array_filter($videoFiles, function ($file) {
-            return in_array(pathinfo($file, PATHINFO_EXTENSION), ['mp4', 'webm']);
-        });
+        // Ambil dan filter file video
+        $videoFiles = collect(Storage::disk('public')->files('videos'))
+            ->filter(function ($file) {
+                return in_array(pathinfo($file, PATHINFO_EXTENSION), ['mp4', 'webm']);
+            })
+            ->sortBy(function ($file) {
+                return (int) filter_var($file, FILTER_SANITIZE_NUMBER_INT);
+            })
+            ->values()
+            ->all();
 
-        // Urutkan file berdasarkan nama
-        natsort($pattFiles);
-        natsort($videoFiles);
-
-        // Gabungkan data
+        // Gabungkan data dengan mencocokkan nomor urut
         $markers = [];
-        $i = 1;
-        foreach ($pattFiles as $index => $pattFile) {
-            $videoFile = $videoFiles[$index] ?? null;
+        $maxCount = max(count($pattFiles), count($videoFiles));
 
-            if ($videoFile) {
+        for ($i = 1; $i <= $maxCount; $i++) {
+            $pattFile = $this->findFileByNumber($pattFiles, $i);
+            $videoFile = $this->findFileByNumber($videoFiles, $i);
+
+            if ($pattFile) {
                 $markers[] = [
                     'patt' => Storage::url($pattFile),
-                    'video' => Storage::url($videoFile),
-                    'number' => $i++
+                    'video' => $videoFile ? Storage::url($videoFile) : null,
+                    'number' => $i
                 ];
             }
         }
 
         return view('markers.ar_view', compact('markers'));
+    }
+
+    // Helper function untuk mencari file berdasarkan nomor
+    protected function findFileByNumber($files, $number)
+    {
+        foreach ($files as $file) {
+            $fileNumber = (int) filter_var($file, FILTER_SANITIZE_NUMBER_INT);
+            if ($fileNumber === $number) {
+                return $file;
+            }
+        }
+        return null;
     }
 
     public function uploadMindFile(Request $request)
