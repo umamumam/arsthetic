@@ -22,7 +22,7 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
-// Route::get('/', [MarkerController::class, 'showAR']);
+Route::get('/ar', [MarkerController::class, 'showARku']);
 Route::get('/', [MarkerController::class, 'showAR'])->name('ar.view');
 Route::prefix('markers')->group(function () {
     // ... routes existing lainnya ...

@@ -6,7 +6,101 @@
     <!--
     <script id="mindar-module" src="../../dist-dev/mindar-image.js"  type="module"></script>
     -->
+<style>
+  /* Base Styles */
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f8f9fa;
+  }
 
+  /* Instruction Styling */
+  p {
+    font-weight: 500;
+    margin-bottom: 10px;
+    color: #2c3e50;
+  }
+
+  ol {
+    padding-left: 20px;
+    margin-bottom: 20px;
+  }
+
+  li {
+    margin-bottom: 8px;
+    color: #495057;
+  }
+
+  /* Button Styling */
+  #startButton, #downloadButton {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-right: 10px;
+  }
+
+  #startButton {
+    background-color: #3498db;
+    color: white;
+  }
+
+  #startButton:hover {
+    background-color: #2980b9;
+  }
+
+  #downloadButton {
+    background-color: #2ecc71;
+    color: white;
+    opacity: 0.7;
+  }
+
+  #downloadButton.active {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  #downloadButton:hover {
+    background-color: #27ae60;
+  }
+
+  /* Progress Indicator */
+  #progress {
+    font-weight: 500;
+    color: #3498db;
+    margin-left: 10px;
+  }
+
+  /* Dropzone - Minimal Styling Only */
+  #dropzone {
+    border: 2px dashed #3498db;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+    text-align: center;
+    background-color: rgba(52, 152, 219, 0.05);
+  }
+
+  /* Canvas Container */
+  #container {
+    margin-top: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+
+  #container canvas {
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+</style>
     <script type="module">
 			import { Compiler } from "../../src/image-target/compiler.js";
 
@@ -150,6 +244,7 @@
   </head>
   <body>
     <div>
+        <h1>Compile Foto ke Marker</h1>
       <p>Usage:</p>
       <ol>
         <li>drop target images (e.g. .png) into the drop zone. (can drop multiple)</li>
@@ -168,4 +263,3 @@
     </div>
   </body>
 </html>
-

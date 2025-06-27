@@ -156,11 +156,11 @@ class MarkerController extends Controller
         return redirect()->route('markers.index')->with('success', 'Marker deleted successfully.');
     }
 
-    // public function showAR()
-    // {
-    //     $markers = Marker::with('photos')->get();
-    //     return view('markers.ar', compact('markers'));
-    // }
+    public function showARku()
+    {
+        $markers = Marker::with('photos')->get();
+        return view('markers.ar', compact('markers'));
+    }
     public function showAR()
     {
         // Ambil semua file .patt dari storage
