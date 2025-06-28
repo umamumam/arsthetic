@@ -10,8 +10,8 @@
     <div id="loading-status" style="position: fixed; top: 10px; left: 10px; color: white; z-index: 9999;"></div>
 
     <a-scene mindar-image="imageTargetSrc: /storage/markers/targets.mind; autoStart: true;" embedded color-space="sRGB"
-        renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false"
-        device-orientation-permission-ui="enabled: false">
+        renderer="colorManagement: true; physicallyCorrectLights: true; precision: mediump; antialias: true;"
+        vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
         <a-assets id="dynamic-assets"></a-assets>
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
         <!-- Marker entities akan digenerate oleh JavaScript -->
@@ -19,13 +19,29 @@
 
     <script>
         // Komponen untuk stabilisasi posisi
-        AFRAME.registerComponent('stable-position', {
+        AFRAME.registerComponent('smooth-position', {
+            schema: {
+                lerpFactor: { default: 0.2 } // Nilai 0.1–0.3 biasanya cukup halus
+            },
+            init: function () {
+                this.previousPosition = new THREE.Vector3();
+                this.previousRotation = new THREE.Euler();
+            },
             tick: function () {
-                // Kunci posisi dan rotasi
-                this.el.object3D.position.set(0, 0, 0);
-                this.el.object3D.rotation.set(0, 0, 0);
+                const current = this.el.object3D;
+
+                // Interpolasi posisi
+                current.position.lerp(this.previousPosition, this.data.lerpFactor);
+                this.previousPosition.copy(current.position);
+
+                // Interpolasi rotasi
+                current.rotation.x = THREE.MathUtils.lerp(this.previousRotation.x, current.rotation.x, this.data.lerpFactor);
+                current.rotation.y = THREE.MathUtils.lerp(this.previousRotation.y, current.rotation.y, this.data.lerpFactor);
+                current.rotation.z = THREE.MathUtils.lerp(this.previousRotation.z, current.rotation.z, this.data.lerpFactor);
+                this.previousRotation.copy(current.rotation);
             }
         });
+
 
         document.addEventListener('DOMContentLoaded', async () => {
             const loadingStatus = document.getElementById('loading-status');
@@ -74,7 +90,7 @@
                     videoObj.setAttribute('height', '1');
                     videoObj.setAttribute('position', '0 0 0');
                     videoObj.setAttribute('rotation', '0 0 0');
-                    videoObj.setAttribute('stable-position', '');
+                    videoObj.setAttribute('smooth-position', 'lerpFactor: 0.15');
                     videoObj.setAttribute('material', 'shader: flat; side: front');
 
                     // Container untuk video
