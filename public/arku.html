@@ -1,13 +1,11 @@
 <html>
-
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 </head>
-
 <body>
-    <a-scene mindar-image="imageTargetSrc: /storage/markers/targets.mind; autoStart: true; filterMinCF:0.0001; missTolerance:10;"
+    <a-scene mindar-image="imageTargetSrc: /storage/markers/targets.mind; autoStart: true; filterMinCF:0.01; missTolerance:0;"
         embedded color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights"
         vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
 
@@ -21,8 +19,8 @@
     </a-scene>
 
     <script>
-        // Jumlah marker yang ingin digunakan (sesuaikan dengan jumlah target di targets.mind)
-        const totalMarkers = 10000; // Ganti dengan jumlah marker yang Anda miliki
+        // Jumlah marker yang ingin digunakan
+        const totalMarkers = 20000; // Sesuaikan dengan kebutuhan
 
         const assetsContainer = document.querySelector("#assets-container");
         const scene = document.querySelector("a-scene");
@@ -40,18 +38,23 @@
             videoEl.setAttribute('webkit-playsinline', 'true');
             assetsContainer.appendChild(videoEl);
 
-            // Buat marker entity
+            // Buat marker entity dengan pengaturan stabilisasi
             const marker = document.createElement('a-entity');
             marker.id = `marker${i}`;
-            marker.setAttribute('mindar-image-target', `targetIndex: ${i-1}; smooth: true; smoothCount: 20; smoothTolerance: 0.01; smoothThreshold: 5;`);
+            marker.setAttribute('mindar-image-target', `targetIndex: ${i-1};
+                smooth: false;
+                smoothCount: 0;
+                smoothTolerance: 0;
+                smoothThreshold: 0`);
 
-            // Buat video entity di dalam marker dengan ukuran tetap 1.1 x 1.2
+            // Buat video entity dengan posisi tetap
             const videoEntity = document.createElement('a-video');
             videoEntity.setAttribute('src', `#video${i}`);
             videoEntity.setAttribute('width', '1');
             videoEntity.setAttribute('height', '1.2');
             videoEntity.setAttribute('position', '0 0 0');
             videoEntity.setAttribute('rotation', '0 0 0');
+            videoEntity.setAttribute('static-body', ''); // Menambahkan komponen untuk stabilitas
 
             marker.appendChild(videoEntity);
             scene.appendChild(marker);
@@ -60,13 +63,15 @@
             const videoElement = document.querySelector(`#video${i}`);
             marker.addEventListener('targetFound', () => {
                 videoElement.play();
+                // Kunci posisi marker
+                marker.object3D.matrixAutoUpdate = false;
             });
             marker.addEventListener('targetLost', () => {
                 videoElement.pause();
             });
         }
 
-        // Optional: trigger play() dengan user gesture untuk unlock autoplay
+        // Trigger play() dengan user gesture
         window.addEventListener('click', () => {
             for (let i = 1; i <= totalMarkers; i++) {
                 const video = document.querySelector(`#video${i}`);
@@ -75,5 +80,4 @@
         });
     </script>
 </body>
-
 </html>
