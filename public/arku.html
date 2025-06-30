@@ -20,7 +20,7 @@
 
     <script>
         // Jumlah marker yang ingin digunakan
-        const totalMarkers = 20000; // Sesuaikan dengan kebutuhan
+        const totalMarkers = 1000; // Sesuaikan dengan kebutuhan
 
         const assetsContainer = document.querySelector("#assets-container");
         const scene = document.querySelector("a-scene");
@@ -54,7 +54,7 @@
             videoEntity.setAttribute('height', '1');
             videoEntity.setAttribute('position', '0 0 0');
             videoEntity.setAttribute('rotation', '0 0 0');
-            videoEntity.setAttribute('static-body', ''); // Menambahkan komponen untuk stabilitas
+            // videoEntity.setAttribute('static-body', ''); // Menambahkan komponen untuk stabilitas
 
             marker.appendChild(videoEntity);
             scene.appendChild(marker);
