@@ -1,13 +1,15 @@
 <html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 </head>
 <body>
-    <a-scene mindar-image="imageTargetSrc: /storage/markers/targets.mind; autoStart: true; filterMinCF:0.01; missTolerance:0;"
-        embedded color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights"
-        vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+    <a-scene mindar-image="imageTargetSrc: /storage/markers/targets.mind; autoStart: false; filterMinCF:0.01; missTolerance:0;"
+        embedded color-space="sRGB"
+        renderer="colorManagement: true; physicallyCorrectLights; antialias: true;"
+        vr-mode-ui="enabled: false"
+        device-orientation-permission-ui="enabled: false">
 
         <a-assets id="assets-container">
             <!-- Video akan ditambahkan secara dinamis -->
@@ -19,65 +21,134 @@
     </a-scene>
 
     <script>
-        // Jumlah marker yang ingin digunakan
-        const totalMarkers = 20000; // Sesuaikan dengan kebutuhan
+        // 1. KONFIGURASI KAMERA TINGGI
+        async function setupHighResCamera() {
+            const scene = document.querySelector('a-scene');
+            const mindarSystem = scene.systems['mindar-image-system'];
 
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: {
+                            ideal: 3840,  // 4K UHD
+                            max: 1920     // Full HD fallback
+                        },
+                        height: {
+                            ideal: 2160,
+                            max: 1080
+                        },
+                        facingMode: 'environment',
+                        frameRate: { ideal: 60, min: 30 },
+                        resizeMode: 'crop-and-scale'
+                    },
+                    audio: false
+                });
+
+                // Tunggu sampai MindAR siap
+                scene.addEventListener('renderstart', () => {
+                    mindarSystem.video.srcObject = stream;
+                    mindarSystem.video.play();
+
+                    // Log resolusi aktual
+                    const track = stream.getVideoTracks()[0];
+                    const settings = track.getSettings();
+                    console.log('Resolusi Kamera Aktual:', settings.width + 'x' + settings.height,
+                              'FPS:', settings.frameRate);
+                });
+
+                return true;
+            } catch (error) {
+                console.warn('Gagal mengaktifkan kamera resolusi tinggi:', error);
+                // Fallback ke resolusi default
+                scene.setAttribute('mindar-image', 'autoStart', true);
+                return false;
+            }
+        }
+
+        // 2. OPTIMASI UNTUK 20,000 MARKER
+        const totalMarkers = 20000;
         const assetsContainer = document.querySelector("#assets-container");
         const scene = document.querySelector("a-scene");
 
-        // Buat video elements dan marker entities secara dinamis
-        for (let i = 1; i <= totalMarkers; i++) {
-            // Tambahkan video ke assets
-            const videoEl = document.createElement('video');
-            videoEl.id = `video${i}`;
-            videoEl.src = `/storage/videos/video${i}.mp4`;
-            videoEl.setAttribute('preload', 'auto');
-            videoEl.setAttribute('loop', 'true');
-            videoEl.setAttribute('muted', 'true');
-            videoEl.setAttribute('playsinline', 'true');
-            videoEl.setAttribute('webkit-playsinline', 'true');
-            assetsContainer.appendChild(videoEl);
+        // 3. INISIALISASI KAMERA SEBELUM MEMBUAT MARKER
+        setupHighResCamera().then((highResSuccess) => {
+            if (!highResSuccess) {
+                console.log('Menggunakan kamera default');
+            }
 
-            // Buat marker entity dengan pengaturan stabilisasi
-            const marker = document.createElement('a-entity');
-            marker.id = `marker${i}`;
-            marker.setAttribute('mindar-image-target', `targetIndex: ${i-1};
-                smooth: false;
-                smoothCount: 0;
-                smoothTolerance: 0;
-                smoothThreshold: 0`);
+            // Buat marker setelah kamera siap
+            createMarkers();
+        });
 
-            // Buat video entity dengan posisi tetap
-            const videoEntity = document.createElement('a-video');
-            videoEntity.setAttribute('src', `#video${i}`);
-            videoEntity.setAttribute('width', '0.7');
-            videoEntity.setAttribute('height', '0.8');
-            videoEntity.setAttribute('position', '0 0 0');
-            videoEntity.setAttribute('rotation', '0 0 0');
-            videoEntity.setAttribute('static-body', ''); // Menambahkan komponen untuk stabilitas
+        function createMarkers() {
+            for (let i = 1; i <= totalMarkers; i++) {
+                const videoEl = document.createElement('video');
+                videoEl.id = `video${i}`;
+                videoEl.src = `/storage/videos/video${i}.mp4`;
+                videoEl.setAttribute('preload', 'auto');
+                videoEl.setAttribute('loop', 'true');
+                videoEl.setAttribute('muted', 'true');
+                videoEl.setAttribute('playsinline', 'true');
+                videoEl.setAttribute('webkit-playsinline', 'true');
+                assetsContainer.appendChild(videoEl);
 
-            marker.appendChild(videoEntity);
-            scene.appendChild(marker);
+                const marker = document.createElement('a-entity');
+                marker.id = `marker${i}`;
+                marker.setAttribute('mindar-image-target', `targetIndex: ${i-1};
+                    smooth: false;
+                    smoothCount: 0;
+                    smoothTolerance: 0;
+                    smoothThreshold: 0`);
 
-            // Tambahkan event listeners
-            const videoElement = document.querySelector(`#video${i}`);
-            marker.addEventListener('targetFound', () => {
-                videoElement.play();
-                // Kunci posisi marker
-                marker.object3D.matrixAutoUpdate = false;
-            });
-            marker.addEventListener('targetLost', () => {
-                videoElement.pause();
-            });
+                const videoEntity = document.createElement('a-video');
+                videoEntity.setAttribute('src', `#video${i}`);
+                videoEntity.setAttribute('width', '0.7');
+                videoEntity.setAttribute('height', '0.8');
+                videoEntity.setAttribute('position', '0 0 0');
+                videoEntity.setAttribute('rotation', '0 0 0');
+                videoEntity.setAttribute('static-body', '');
+
+                // Optimasi rendering untuk kualitas tinggi
+                videoEntity.setAttribute('material', 'shader: flat; precision: high;');
+
+                marker.appendChild(videoEntity);
+                scene.appendChild(marker);
+
+                const videoElement = document.querySelector(`#video${i}`);
+                marker.addEventListener('targetFound', () => {
+                    videoElement.play().catch(e => console.error(e));
+                    marker.object3D.matrixAutoUpdate = false;
+
+                    // Optimasi tambahan saat marker ditemukan
+                    marker.setAttribute('render-order', '1');
+                });
+
+                marker.addEventListener('targetLost', () => {
+                    videoElement.pause();
+                });
+            }
         }
 
-        // Trigger play() dengan user gesture
-        window.addEventListener('click', () => {
-            for (let i = 1; i <= totalMarkers; i++) {
-                const video = document.querySelector(`#video${i}`);
-                video.play().catch(() => {});
+        // 4. HANDLING USER GESTURE UNTUK KAMERA MOBILE
+        let hasInteracted = false;
+        document.body.addEventListener('click', () => {
+            if (!hasInteracted) {
+                hasInteracted = true;
+                scene.setAttribute('mindar-image', 'autoStart', true);
+
+                // Mulai semua video yang ada
+                const videos = document.querySelectorAll('video');
+                videos.forEach(video => {
+                    video.play().catch(e => console.log(e));
+                });
             }
         });
+
+        // 5. FALLBACK UNTUK PERANGKAT RENDAH
+        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+            console.log('Perangkat mobile terdeteksi, mengoptimasi...');
+            scene.setAttribute('renderer', 'antialias: false');
+        }
     </script>
 </body>
 </html>
