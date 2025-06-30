@@ -22,7 +22,7 @@
 
     <script>
         // Jumlah marker yang ingin digunakan (sesuaikan dengan jumlah target di targets.mind)
-        const totalMarkers = 2; // Ganti dengan jumlah marker yang Anda miliki
+        const totalMarkers = 10000; // Ganti dengan jumlah marker yang Anda miliki
 
         const assetsContainer = document.querySelector("#assets-container");
         const scene = document.querySelector("a-scene");
@@ -48,7 +48,7 @@
             // Buat video entity di dalam marker dengan ukuran tetap 1.1 x 1.2
             const videoEntity = document.createElement('a-video');
             videoEntity.setAttribute('src', `#video${i}`);
-            videoEntity.setAttribute('width', '1.1');
+            videoEntity.setAttribute('width', '1');
             videoEntity.setAttribute('height', '1.2');
             videoEntity.setAttribute('position', '0 0 0');
             videoEntity.setAttribute('rotation', '0 0 0');
