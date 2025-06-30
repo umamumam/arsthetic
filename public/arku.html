@@ -45,11 +45,11 @@
             marker.id = `marker${i}`;
             marker.setAttribute('mindar-image-target', `targetIndex: ${i-1}; smooth: true; smoothCount: 20; smoothTolerance: 0.01; smoothThreshold: 5;`);
 
-            // Buat video entity di dalam marker
+            // Buat video entity di dalam marker dengan ukuran tetap 1.1 x 1.2
             const videoEntity = document.createElement('a-video');
             videoEntity.setAttribute('src', `#video${i}`);
-            videoEntity.setAttribute('width', i === 1 ? '1.1' : '0.6'); // Ukuran bisa disesuaikan
-            videoEntity.setAttribute('height', i === 1 ? '1.2' : '0.75');
+            videoEntity.setAttribute('width', '1.1');
+            videoEntity.setAttribute('height', '1.2');
             videoEntity.setAttribute('position', '0 0 0');
             videoEntity.setAttribute('rotation', '0 0 0');
 
