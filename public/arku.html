@@ -7,149 +7,72 @@
 </head>
 
 <body>
-    <div id="loading-status" style="position: fixed; top: 10px; left: 10px; color: white; z-index: 9999;"></div>
-
-    <a-scene mindar-image="imageTargetSrc: /storage/markers/targets.mind; autoStart: true;" embedded color-space="sRGB"
-        renderer="colorManagement: true; physicallyCorrectLights: true; precision: mediump; antialias: true;"
+    <a-scene mindar-image="imageTargetSrc: /storage/markers/targets.mind; autoStart: true; filterMinCF:0.0001; missTolerance:10;"
+        embedded color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights"
         vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
-        <a-assets id="dynamic-assets"></a-assets>
+
+        <a-assets id="assets-container">
+            <!-- Video akan ditambahkan secara dinamis -->
+        </a-assets>
+
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-        <!-- Marker entities akan digenerate oleh JavaScript -->
+
+        <!-- Marker akan ditambahkan secara dinamis -->
     </a-scene>
 
     <script>
-        // Komponen untuk stabilisasi posisi
-        AFRAME.registerComponent('smooth-position', {
-            schema: {
-                lerpFactor: { default: 0.2 } // Nilai 0.1–0.3 biasanya cukup halus
-            },
-            init: function () {
-                this.previousPosition = new THREE.Vector3();
-                this.previousRotation = new THREE.Euler();
-            },
-            tick: function () {
-                const current = this.el.object3D;
+        // Jumlah marker yang ingin digunakan (sesuaikan dengan jumlah target di targets.mind)
+        const totalMarkers = 2; // Ganti dengan jumlah marker yang Anda miliki
 
-                // Interpolasi posisi
-                current.position.lerp(this.previousPosition, this.data.lerpFactor);
-                this.previousPosition.copy(current.position);
+        const assetsContainer = document.querySelector("#assets-container");
+        const scene = document.querySelector("a-scene");
 
-                // Interpolasi rotasi
-                current.rotation.x = THREE.MathUtils.lerp(this.previousRotation.x, current.rotation.x, this.data.lerpFactor);
-                current.rotation.y = THREE.MathUtils.lerp(this.previousRotation.y, current.rotation.y, this.data.lerpFactor);
-                current.rotation.z = THREE.MathUtils.lerp(this.previousRotation.z, current.rotation.z, this.data.lerpFactor);
-                this.previousRotation.copy(current.rotation);
-            }
-        });
+        // Buat video elements dan marker entities secara dinamis
+        for (let i = 1; i <= totalMarkers; i++) {
+            // Tambahkan video ke assets
+            const videoEl = document.createElement('video');
+            videoEl.id = `video${i}`;
+            videoEl.src = `/storage/videos/video${i}.mp4`;
+            videoEl.setAttribute('preload', 'auto');
+            videoEl.setAttribute('loop', 'true');
+            videoEl.setAttribute('muted', 'true');
+            videoEl.setAttribute('playsinline', 'true');
+            videoEl.setAttribute('webkit-playsinline', 'true');
+            assetsContainer.appendChild(videoEl);
 
+            // Buat marker entity
+            const marker = document.createElement('a-entity');
+            marker.id = `marker${i}`;
+            marker.setAttribute('mindar-image-target', `targetIndex: ${i-1}; smooth: true; smoothCount: 20; smoothTolerance: 0.01; smoothThreshold: 5;`);
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            const loadingStatus = document.getElementById('loading-status');
-            const assetsContainer = document.getElementById('dynamic-assets');
-            const scene = document.querySelector('a-scene');
+            // Buat video entity di dalam marker
+            const videoEntity = document.createElement('a-video');
+            videoEntity.setAttribute('src', `#video${i}`);
+            videoEntity.setAttribute('width', i === 1 ? '1.1' : '0.6'); // Ukuran bisa disesuaikan
+            videoEntity.setAttribute('height', i === 1 ? '1.2' : '0.75');
+            videoEntity.setAttribute('position', '0 0 0');
+            videoEntity.setAttribute('rotation', '0 0 0');
 
-            // Konfigurasi
-            const MAX_VIDEOS = 10000;
-            const videos = {};
-            const markers = {};
+            marker.appendChild(videoEntity);
+            scene.appendChild(marker);
 
-            // 1. Generate video elements dan marker secara dinamis
-            loadingStatus.textContent = "Loading videos...";
-
-            for (let i = 1; i <= MAX_VIDEOS; i++) {
-                try {
-                    // Cek apakah video ada sebelum membuat elemen
-                    const videoUrl = `/storage/videos/video${i}.mp4`;
-                    const videoExists = await checkFileExists(videoUrl);
-
-                    if (!videoExists) {
-                        console.log(`Video ${i} tidak ditemukan, berhenti loading`);
-                        break;
-                    }
-
-                    // Buat elemen video
-                    const videoEl = document.createElement('video');
-                    videoEl.id = `video${i}`;
-                    videoEl.src = videoUrl;
-                    videoEl.setAttribute('preload', 'auto');
-                    videoEl.setAttribute('loop', 'true');
-                    videoEl.setAttribute('muted', 'true');
-                    videoEl.setAttribute('playsinline', 'true');
-                    videoEl.setAttribute('webkit-playsinline', 'true');
-                    assetsContainer.appendChild(videoEl);
-
-                    // Buat marker entity
-                    const markerEl = document.createElement('a-entity');
-                    markerEl.id = `marker${i}`;
-                    markerEl.setAttribute('mindar-image-target', `targetIndex: ${i - 1}`);
-
-                    // Buat video entity dengan posisi stabil
-                    const videoObj = document.createElement('a-video');
-                    videoObj.setAttribute('src', `#video${i}`);
-                    videoObj.setAttribute('width', '1.1');
-                    videoObj.setAttribute('height', '1.2');
-                    videoObj.setAttribute('position', '0 0 0');
-                    videoObj.setAttribute('rotation', '0 0 0');
-                    videoObj.setAttribute('smooth-position', 'lerpFactor: 0.15');
-                    videoObj.setAttribute('material', 'shader: flat; side: front');
-
-                    // Container untuk video
-                    const videoContainer = document.createElement('a-entity');
-                    videoContainer.setAttribute('position', '0 0 0');
-                    videoContainer.appendChild(videoObj);
-
-                    markerEl.appendChild(videoContainer);
-                    scene.appendChild(markerEl);
-
-                    // Simpan reference
-                    videos[i] = videoEl;
-                    markers[i] = markerEl;
-
-                    console.log(`Berhasil load video${i}.mp4`);
-
-                } catch (error) {
-                    console.error(`Error loading video${i}:`, error);
-                    break;
-                }
-            }
-
-            // 2. Setup event listeners setelah semua element tercreate
-            loadingStatus.textContent = "Setting up AR...";
-
-            Object.keys(markers).forEach(num => {
-                markers[num].addEventListener("targetFound", () => {
-                    videos[num].currentTime = 0;
-                    videos[num].play().catch(e => {
-                        console.log(`Gagal autoplay video${num}:`, e);
-                        loadingStatus.textContent = `Tap screen to play video ${num}`;
-                    });
-                });
-
-                markers[num].addEventListener("targetLost", () => {
-                    videos[num].pause();
-                });
+            // Tambahkan event listeners
+            const videoElement = document.querySelector(`#video${i}`);
+            marker.addEventListener('targetFound', () => {
+                videoElement.play();
             });
-
-            // 3. Handler untuk unlock autoplay
-            window.addEventListener("click", () => {
-                Object.values(videos).forEach(video => {
-                    video.play().catch(e => console.log("Fallback play error:", e));
-                });
-                loadingStatus.textContent = "AR ready - Scan markers";
-            }, { once: true });
-
-            loadingStatus.textContent = "AR ready - Tap screen to start";
-        });
-
-        // Fungsi untuk mengecek apakah file video ada
-        async function checkFileExists(url) {
-            try {
-                const response = await fetch(url, { method: 'HEAD' });
-                return response.ok;
-            } catch {
-                return false;
-            }
+            marker.addEventListener('targetLost', () => {
+                videoElement.pause();
+            });
         }
+
+        // Optional: trigger play() dengan user gesture untuk unlock autoplay
+        window.addEventListener('click', () => {
+            for (let i = 1; i <= totalMarkers; i++) {
+                const video = document.querySelector(`#video${i}`);
+                video.play().catch(() => {});
+            }
+        });
     </script>
 </body>
 
