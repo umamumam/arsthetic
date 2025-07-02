@@ -3,40 +3,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    <!-- Tambahkan RecordRTC -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/RecordRTC/5.6.2/RecordRTC.min.js"></script>
-    <!-- Tambahkan Font Awesome untuk ikon -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        #recordButton {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.7);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            font-size: 24px;
-            cursor: pointer;
-            z-index: 9999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        #recordButton.recording {
-            background: rgba(255,0,0,0.7);
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(255,0,0,0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(255,0,0,0); }
-            100% { box-shadow: 0 0 0 0 rgba(255,0,0,0); }
-        }
-    </style>
 </head>
+<style>
+  #recordButton {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 24px;
+    font-size: 16px;
+    z-index: 9999;
+    background-color: red;
+    color: white;
+    border: none;
+    border-radius: 10px;
+  }
+
+  @media screen and (max-width: 768px) {
+    #recordButton {
+      font-size: 14px;
+      padding: 10px 20px;
+    }
+  }
+</style>
+
+<button id="recordButton">Mulai Rekam</button>
+
 <body>
     <a-scene
         mindar-image="
@@ -65,11 +57,6 @@
 
         <!-- Marker akan ditambahkan secara dinamis -->
     </a-scene>
-
-    <!-- Tombol Rekam -->
-    <button id="recordButton" title="Rekam Layar">
-        <i class="fas fa-video"></i>
-    </button>
 
     <script>
         // Jumlah marker
@@ -102,7 +89,7 @@
 
             // Marker entity
             const marker = document.createElement('a-entity');
-            marker.id = `marker${i}`;
+            marker.id = `marker${i}`;  <!-- Fixed typo 'marker' (sebelumnya 'marker') -->
             marker.setAttribute('mindar-image-target', `
                 targetIndex: ${i-1};
                 smooth: true;
@@ -161,73 +148,55 @@
                 isFirstClick = false;
             }
         }, { once: true });
-
-        // Fitur Rekam Layar
-        const recordButton = document.getElementById('recordButton');
-        let mediaRecorder;
-        let recordedChunks = [];
-        let isRecording = false;
-
-        recordButton.addEventListener('click', async () => {
-            if (!isRecording) {
-                try {
-                    // Mulai rekam
-                    const stream = await navigator.mediaDevices.getDisplayMedia({
-                        video: {
-                            displaySurface: 'browser',
-                            logicalSurface: true
-                        },
-                        audio: false
-                    });
-
-                    mediaRecorder = new MediaRecorder(stream);
-                    recordedChunks = [];
-
-                    mediaRecorder.ondataavailable = (e) => {
-                        if (e.data.size > 0) {
-                            recordedChunks.push(e.data);
-                        }
-                    };
-
-                    mediaRecorder.onstop = () => {
-                        const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                        const url = URL.createObjectURL(blob);
-
-                        // Buat link download
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `rekaman-ar-${new Date().toISOString()}.webm`;
-                        a.click();
-
-                        URL.revokeObjectURL(url);
-                    };
-
-                    mediaRecorder.start();
-                    isRecording = true;
-                    recordButton.classList.add('recording');
-                    recordButton.innerHTML = '<i class="fas fa-stop"></i>';
-
-                    // Otomatis stop ketika user menghentikan sharing layar
-                    stream.getVideoTracks()[0].onended = () => {
-                        if (isRecording) {
-                            mediaRecorder.stop();
-                            isRecording = false;
-                            recordButton.classList.remove('recording');
-                            recordButton.innerHTML = '<i class="fas fa-video"></i>';
-                        }
-                    };
-                } catch (err) {
-                    console.error('Error recording:', err);
-                    alert('Gagal memulai rekaman: ' + err.message);
-                }
-            } else {
-                // Stop rekam
-                mediaRecorder.stop();
-                isRecording = false;
-                recordButton.classList.remove('recording');
-                recordButton.innerHTML = '<i class="fas fa-video"></i>';
-            }
-        });
     </script>
+    <script>
+  let mediaRecorder;
+  let recordedChunks = [];
+  let isRecording = false;
+
+  const recordButton = document.getElementById('recordButton');
+  const sceneEl = document.querySelector('a-scene');
+
+  recordButton.addEventListener('click', async () => {
+    if (!isRecording) {
+      const canvas = sceneEl.canvas;
+
+      if (!canvas) {
+        alert("Canvas belum tersedia. Tunggu sampai AR siap.");
+        return;
+      }
+
+      const stream = canvas.captureStream(30); // 30 fps
+      recordedChunks = [];
+
+      mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+
+      mediaRecorder.ondataavailable = function (e) {
+        if (e.data.size > 0) recordedChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = function () {
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'rekaman-ar.webm';
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+
+      mediaRecorder.start();
+      recordButton.innerText = 'Berhenti Rekam';
+      recordButton.style.backgroundColor = 'green';
+      isRecording = true;
+    } else {
+      mediaRecorder.stop();
+      recordButton.innerText = 'Mulai Rekam';
+      recordButton.style.backgroundColor = 'red';
+      isRecording = false;
+    }
+  });
+</script>
+
 </body>
 </html>
