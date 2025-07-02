@@ -3,8 +3,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <style>
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 10px 15px;
+            background: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
 </head>
 <body>
+    <div id="controls">
+        <button id="recordBtn">Mulai Rekam</button>
+        <button id="downloadBtn" disabled>Download</button>
+    </div>
+
     <a-scene
         mindar-image="
             imageTargetSrc: /storage/markers/targets.mind;
@@ -64,11 +93,11 @@
 
             // Marker entity
             const marker = document.createElement('a-entity');
-            marker.id = `marker${i}`;  <!-- Fixed typo 'marker' (sebelumnya 'marker') -->
+            marker.id = `marker${i}`;
             marker.setAttribute('mindar-image-target', `
                 targetIndex: ${i-1};
-                smooth: true;          <!-- Aktifkan smoothing -->
-                smoothCount: 5;         <!-- Nilai rendah untuk performa -->
+                smooth: true;
+                smoothCount: 5;
                 smoothTolerance: 0.01;
                 smoothThreshold: 2;
             `);
@@ -123,6 +152,100 @@
                 isFirstClick = false;
             }
         }, { once: true });
+
+        // Fitur Rekam dan Download
+        const recordBtn = document.getElementById('recordBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        let mediaRecorder;
+        let recordedChunks = [];
+        let recordingStartTime;
+
+        recordBtn.addEventListener('click', toggleRecording);
+        downloadBtn.addEventListener('click', downloadRecording);
+
+        async function toggleRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
+        async function startRecording() {
+            try {
+                // Dapatkan stream dari canvas A-Frame
+                const canvas = document.querySelector('a-scene').canvas;
+                const stream = canvas.captureStream(30); // 30 FPS
+
+                recordedChunks = [];
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'video/webm;codecs=vp9'
+                });
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    const recordingDuration = (Date.now() - recordingStartTime) / 1000;
+                    console.log(`Recording stopped after ${recordingDuration} seconds`);
+                    downloadBtn.disabled = false;
+                };
+
+                mediaRecorder.start(100); // Mengumpulkan data setiap 100ms
+                recordingStartTime = Date.now();
+                recordBtn.textContent = 'Stop Rekam';
+                downloadBtn.disabled = true;
+                console.log('Recording started');
+            } catch (error) {
+                console.error('Error starting recording:', error);
+                alert('Gagal memulai rekaman: ' + error.message);
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                recordBtn.textContent = 'Mulai Rekam';
+
+                // Hentikan semua track di stream
+                const stream = mediaRecorder.stream;
+                stream.getTracks().forEach(track => track.stop());
+            }
+        }
+
+        function downloadRecording() {
+            if (recordedChunks.length === 0) {
+                alert('Tidak ada rekaman yang tersedia untuk didownload');
+                return;
+            }
+
+            const blob = new Blob(recordedChunks, {
+                type: 'video/webm'
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `ar-recording-${new Date().toISOString()}.webm`;
+            document.body.appendChild(a);
+            a.click();
+
+            // Bersihkan
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+        }
+
+        // Hentikan rekaman saat tab ditutup atau refresh
+        window.addEventListener('beforeunload', () => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+            }
+        });
     </script>
 </body>
 </html>
