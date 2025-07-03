@@ -40,7 +40,7 @@
             background-color: #f44336;
             border: 4px solid white;
         }
-        #permission-text {
+        #recording-status {
             position: fixed;
             bottom: 90px;
             left: 0;
@@ -51,6 +51,27 @@
             padding: 10px;
             display: none;
             z-index: 10000;
+            border-radius: 20px;
+            margin: 0 20px;
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            z-index: 10001;
+            animation: fadeInOut 3s;
+            display: none;
+        }
+        @keyframes fadeInOut {
+            0% { opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
         }
     </style>
 </head>
@@ -84,38 +105,82 @@
     </a-scene>
 
     <button id="screen-record-btn" title="Record Screen"></button>
-    <div id="permission-text">Izinkan akses rekam layar di popup browser</div>
+    <div id="recording-status">Merekam layar... Klik tombol lagi untuk berhenti</div>
+    <div id="toast" class="toast"></div>
 
     <script>
-        // [Kode yang sudah ada tetap sama...]
+        // [Kode AR yang sudah ada tetap sama...]
 
-        // Screen recording functionality yang kompatibel dengan mobile
+        // ================= SCREEN RECORDING SOLUTION =================
         const recordBtn = document.getElementById('screen-record-btn');
-        const permissionText = document.getElementById('permission-text');
+        const recordingStatus = document.getElementById('recording-status');
+        const toast = document.getElementById('toast');
+
         let mediaRecorder;
         let recordedChunks = [];
         let stream;
+        let isRecording = false;
 
-        // Fungsi untuk memulai recording
+        // Tampilkan pesan toast
+        function showToast(message) {
+            toast.textContent = message;
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        // Cek dukungan browser
+        function isScreenRecordingSupported() {
+            return (
+                navigator.mediaDevices &&
+                'getDisplayMedia' in navigator.mediaDevices &&
+                window.MediaRecorder &&
+                MediaRecorder.isTypeSupported('video/webm')
+            );
+        }
+
+        // Cek jika di mobile device
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+
+        // Mulai recording
         async function startRecording() {
             try {
-                // Periksa dukungan browser
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-                    alert('Browser tidak mendukung screen recording');
-                    return;
+                // Tampilkan status recording
+                recordingStatus.style.display = 'block';
+                recordBtn.classList.add('recording');
+                isRecording = true;
+
+                // Dapatkan stream berdasarkan device
+                if (isScreenRecordingSupported() && !isMobileDevice()) {
+                    // Desktop: rekam layar/tab
+                    stream = await navigator.mediaDevices.getDisplayMedia({
+                        video: {
+                            displaySurface: 'browser',
+                            frameRate: 15
+                        },
+                        audio: false
+                    });
+                } else {
+                    // Mobile: rekam kamera (fallback)
+                    showToast("Mode rekam layar penuh tidak tersedia. Merekam menggunakan kamera...");
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: 'environment',
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        },
+                        audio: false
+                    });
                 }
 
-                permissionText.style.display = 'block';
-
-                // Minta izin rekam layar
-                stream = await navigator.mediaDevices.getDisplayMedia({
-                    video: true,
-                    audio: false
+                // Setup media recorder
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'video/webm'
                 });
 
-                permissionText.style.display = 'none';
-
-                mediaRecorder = new MediaRecorder(stream);
                 recordedChunks = [];
 
                 mediaRecorder.ondataavailable = (e) => {
@@ -125,59 +190,84 @@
                 };
 
                 mediaRecorder.onstop = () => {
-                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `recording-${new Date().toISOString()}.webm`;
-                    document.body.appendChild(a);
-                    a.click();
-                    setTimeout(() => {
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
-                    }, 100);
-
-                    // Hentikan semua track
-                    stream.getTracks().forEach(track => track.stop());
+                    saveRecording();
+                    cleanup();
                 };
-
-                mediaRecorder.start();
-                recordBtn.classList.add('recording');
 
                 // Handle ketika user menghentikan sharing via browser UI
                 stream.getVideoTracks()[0].onended = () => {
                     stopRecording();
                 };
 
-            } catch (err) {
-                console.error('Error:', err);
-                permissionText.style.display = 'none';
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                }
+                mediaRecorder.start(100); // Ambil data setiap 100ms
+
+            } catch (error) {
+                console.error('Error:', error);
+                showToast("Gagal memulai rekaman: " + error.message);
+                cleanup();
             }
         }
 
-        // Fungsi untuk menghentikan recording
+        // Berhenti recording
         function stopRecording() {
             if (mediaRecorder && mediaRecorder.state === 'recording') {
                 mediaRecorder.stop();
-                recordBtn.classList.remove('recording');
             }
+            cleanup();
+        }
+
+        // Simpan rekaman
+        function saveRecording() {
+            try {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `rekaman-${new Date().toISOString()}.webm`;
+                document.body.appendChild(a);
+                a.click();
+
+                // Bersihkan setelah download
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+
+                showToast("Rekaman berhasil disimpan");
+            } catch (error) {
+                console.error('Error saving recording:', error);
+                showToast("Gagal menyimpan rekaman");
+            }
+        }
+
+        // Bersihkan resource
+        function cleanup() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            recordingStatus.style.display = 'none';
+            recordBtn.classList.remove('recording');
+            isRecording = false;
         }
 
         // Handle klik tombol
         recordBtn.addEventListener('click', async () => {
-            if (!mediaRecorder || mediaRecorder.state === 'inactive') {
-                startRecording();
+            if (!isRecording) {
+                // Periksa izin dan dukungan sebelum memulai
+                if (isMobileDevice()) {
+                    showToast("Di perangkat mobile, rekaman mungkin terbatas");
+                }
+                await startRecording();
             } else {
                 stopRecording();
             }
         });
 
-        // Tambahkan event untuk menghandle case ketika halaman ditutup saat recording
-        window.addEventListener('beforeunload', () => {
-            if (mediaRecorder && mediaRecorder.state === 'recording') {
+        // Handle ketika halaman ditutup saat recording
+        window.addEventListener('beforeunload', (e) => {
+            if (isRecording) {
+                e.preventDefault();
+                e.returnValue = 'Anda sedang merekam. Yakin ingin keluar?';
                 stopRecording();
             }
         });
