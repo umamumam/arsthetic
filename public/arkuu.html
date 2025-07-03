@@ -40,6 +40,18 @@
             background-color: #f44336;
             border: 4px solid white;
         }
+        #permission-text {
+            position: fixed;
+            bottom: 90px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: white;
+            background-color: rgba(0,0,0,0.7);
+            padding: 10px;
+            display: none;
+            z-index: 10000;
+        }
     </style>
 </head>
 <body>
@@ -72,143 +84,101 @@
     </a-scene>
 
     <button id="screen-record-btn" title="Record Screen"></button>
+    <div id="permission-text">Izinkan akses rekam layar di popup browser</div>
 
     <script>
-        // Jumlah marker
-        const totalMarkers = 100;
+        // [Kode yang sudah ada tetap sama...]
 
-        // Optimasi: Batch DOM manipulation
-        const assetsFragment = document.createDocumentFragment();
-        const sceneFragment = document.createDocumentFragment();
-
-        const assetsContainer = document.querySelector("#assets-container");
-        const scene = document.querySelector("a-scene");
-
-        // Preload hanya 5 video pertama (untuk UX lebih baik)
-        const preloadCount = Math.min(5, totalMarkers);
-
-        for (let i = 1; i <= totalMarkers; i++) {
-            // Video element
-            const videoEl = document.createElement('video');
-            videoEl.id = `video${i}`;
-            videoEl.src = `/storage/videos/video${i}.mp4`;
-            videoEl.setAttribute('loop', 'true');
-            videoEl.setAttribute('muted', 'true');
-            videoEl.setAttribute('playsinline', 'true');
-            videoEl.setAttribute('webkit-playsinline', 'true');
-
-            // Hanya preload video awal
-            videoEl.setAttribute('preload', i <= preloadCount ? 'auto' : 'none');
-
-            assetsFragment.appendChild(videoEl);
-
-            // Marker entity
-            const marker = document.createElement('a-entity');
-            marker.id = `marker${i}`;  <!-- Fixed typo 'marker' (sebelumnya 'marker') -->
-            marker.setAttribute('mindar-image-target', `
-                targetIndex: ${i-1};
-                smooth: true;
-                smoothCount: 5;
-                smoothTolerance: 0.01;
-                smoothThreshold: 2;
-            `);
-
-            // Video entity
-            const videoEntity = document.createElement('a-video');
-            videoEntity.setAttribute('src', `#video${i}`);
-            videoEntity.setAttribute('width', '1.05');
-            videoEntity.setAttribute('height', '1.2');
-            videoEntity.setAttribute('position', '0 0 0');
-            videoEntity.setAttribute('rotation', '0 0 0');
-
-            marker.appendChild(videoEntity);
-            sceneFragment.appendChild(marker);
-        }
-
-        // Single DOM update
-        assetsContainer.appendChild(assetsFragment);
-        scene.appendChild(sceneFragment);
-
-        // Event delegation untuk performa
-        scene.addEventListener('targetFound', (e) => {
-            const markerId = e.target.id;
-            if (!markerId.startsWith('marker')) return;
-
-            const markerNum = markerId.replace('marker', '');
-            const video = document.querySelector(`#video${markerNum}`);
-            video.play().catch(() => {});
-
-            // Optimasi: Matikan update matrix jika tidak perlu
-            e.target.object3D.matrixAutoUpdate = false;
-        });
-
-        scene.addEventListener('targetLost', (e) => {
-            const markerId = e.target.id;
-            if (!markerId.startsWith('marker')) return;
-
-            const markerNum = markerId.replace('marker', '');
-            const video = document.querySelector(`#video${markerNum}`);
-            video.pause();
-        });
-
-        // User gesture handler yang lebih efisien
-        let isFirstClick = true;
-        window.addEventListener('click', () => {
-            if (isFirstClick) {
-                // Hanya preload video yang belum dimuat
-                for (let i = preloadCount + 1; i <= totalMarkers; i++) {
-                    const video = document.querySelector(`#video${i}`);
-                    video.setAttribute('preload', 'auto');
-                }
-                isFirstClick = false;
-            }
-        }, { once: true });
-
-        // Screen recording functionality
+        // Screen recording functionality yang kompatibel dengan mobile
         const recordBtn = document.getElementById('screen-record-btn');
+        const permissionText = document.getElementById('permission-text');
         let mediaRecorder;
         let recordedChunks = [];
+        let stream;
 
-        recordBtn.addEventListener('click', async () => {
-            if (!mediaRecorder || mediaRecorder.state === 'inactive') {
-                try {
-                    const stream = await navigator.mediaDevices.getDisplayMedia({
-                        video: true,
-                        audio: false
-                    });
-
-                    mediaRecorder = new MediaRecorder(stream);
-                    recordedChunks = [];
-
-                    mediaRecorder.ondataavailable = (e) => {
-                        if (e.data.size > 0) {
-                            recordedChunks.push(e.data);
-                        }
-                    };
-
-                    mediaRecorder.onstop = () => {
-                        const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `screen-recording-${new Date().toISOString()}.webm`;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                    };
-
-                    mediaRecorder.start();
-                    recordBtn.classList.add('recording');
-
-                    stream.getVideoTracks()[0].onended = () => {
-                        mediaRecorder.stop();
-                        recordBtn.classList.remove('recording');
-                    };
-                } catch (err) {
-                    console.error('Error:', err);
+        // Fungsi untuk memulai recording
+        async function startRecording() {
+            try {
+                // Periksa dukungan browser
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+                    alert('Browser tidak mendukung screen recording');
+                    return;
                 }
-            } else {
+
+                permissionText.style.display = 'block';
+
+                // Minta izin rekam layar
+                stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true,
+                    audio: false
+                });
+
+                permissionText.style.display = 'none';
+
+                mediaRecorder = new MediaRecorder(stream);
+                recordedChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                        recordedChunks.push(e.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `recording-${new Date().toISOString()}.webm`;
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    }, 100);
+
+                    // Hentikan semua track
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                recordBtn.classList.add('recording');
+
+                // Handle ketika user menghentikan sharing via browser UI
+                stream.getVideoTracks()[0].onended = () => {
+                    stopRecording();
+                };
+
+            } catch (err) {
+                console.error('Error:', err);
+                permissionText.style.display = 'none';
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+            }
+        }
+
+        // Fungsi untuk menghentikan recording
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
                 mediaRecorder.stop();
                 recordBtn.classList.remove('recording');
+            }
+        }
+
+        // Handle klik tombol
+        recordBtn.addEventListener('click', async () => {
+            if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+                startRecording();
+            } else {
+                stopRecording();
+            }
+        });
+
+        // Tambahkan event untuk menghandle case ketika halaman ditutup saat recording
+        window.addEventListener('beforeunload', () => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                stopRecording();
             }
         });
     </script>
