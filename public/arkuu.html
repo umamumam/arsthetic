@@ -1,12 +1,12 @@
 <html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
         #screen-record-btn {
             position: fixed;
-            bottom: 20px;
+            bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
             width: 60px;
@@ -15,12 +15,13 @@
             background-color: #f44336;
             color: white;
             border: none;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
             z-index: 9999;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
+            touch-action: manipulation;
         }
         #screen-record-btn::before {
             content: "";
@@ -74,48 +75,72 @@
         let mediaRecorder;
         let recordedChunks = [];
 
-        recordBtn.addEventListener('click', async () => {
+        // Fungsi untuk menangani klik/tap
+        function handleRecordClick() {
             if (!mediaRecorder || mediaRecorder.state === 'inactive') {
-                try {
-                    const stream = await navigator.mediaDevices.getDisplayMedia({
-                        video: { mediaSource: 'screen' },
-                        audio: false
-                    });
-
-                    mediaRecorder = new MediaRecorder(stream);
-                    recordedChunks = [];
-
-                    mediaRecorder.ondataavailable = (e) => {
-                        if (e.data.size > 0) {
-                            recordedChunks.push(e.data);
-                        }
-                    };
-
-                    mediaRecorder.onstop = () => {
-                        const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `recording-${new Date().toISOString()}.webm`;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                    };
-
-                    mediaRecorder.start();
-                    recordBtn.classList.add('recording');
-
-                    stream.getVideoTracks()[0].onended = () => {
-                        mediaRecorder.stop();
-                        recordBtn.classList.remove('recording');
-                    };
-                } catch (err) {
-                    console.error('Error:', err);
-                }
+                startRecording();
             } else {
+                stopRecording();
+            }
+        }
+
+        // Tambahkan event listener untuk touch dan click
+        recordBtn.addEventListener('click', handleRecordClick);
+        recordBtn.addEventListener('touchstart', handleRecordClick, {passive: true});
+
+        async function startRecording() {
+            try {
+                // Periksa dukungan browser
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+                    alert('Browser tidak mendukung screen recording');
+                    return;
+                }
+
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { mediaSource: 'screen' },
+                    audio: false
+                });
+
+                mediaRecorder = new MediaRecorder(stream);
+                recordedChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                        recordedChunks.push(e.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `recording-${new Date().toISOString()}.webm`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                };
+
+                mediaRecorder.start();
+                recordBtn.classList.add('recording');
+
+                // Handle ketika user menghentikan sharing layar
+                stream.getVideoTracks()[0].onended = () => {
+                    mediaRecorder.stop();
+                    recordBtn.classList.remove('recording');
+                };
+            } catch (err) {
+                console.error('Error:', err);
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
                 mediaRecorder.stop();
                 recordBtn.classList.remove('recording');
             }
-        });
+        }
 
         // Jumlah marker
         const totalMarkers = 100;
@@ -147,7 +172,7 @@
 
             // Marker entity
             const marker = document.createElement('a-entity');
-            marker.id = `marker${i}`;  <!-- Fixed typo 'marker' (sebelumnya 'marker') -->
+            marker.id = `marker${i}`;
             marker.setAttribute('mindar-image-target', `
                 targetIndex: ${i-1};
                 smooth: true;
